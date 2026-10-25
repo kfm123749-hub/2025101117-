@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+<title>불 대수 집중 5문제</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=STIX+Two+Text:ital,wght@1,400;1,500&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* 레이아웃: 한 줄 기둥(최대 960px) + 상단 고정 목차, 문제 해설은 탭 5개 */
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --soft: #eef1f5;
+  --line: #dde2e9;
+  --fg: #16181d;
+  --muted: #5d6573;
+  --accent: #0a62d0;
+  --accent-soft: #e6effc;
+  --hi: #0a62d0;
+  --wire: #7d8593;
+  --gate-fill: #ffffff;
+  --font-ui: "Pretendard", "Pretendard Variable", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  --font-math: "STIX Two Text", "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111317; --surface: #1a1d23; --soft: #22262d; --line: #2f343d;
+    --fg: #eceef2; --muted: #9aa2b1; --accent: #5aa2ff; --accent-soft: #1c2a40;
+    --hi: #5aa2ff; --wire: #6d7584; --gate-fill: #1a1d23; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111317; --surface: #1a1d23; --soft: #22262d; --line: #2f343d;
+  --fg: #eceef2; --muted: #9aa2b1; --accent: #5aa2ff; --accent-soft: #1c2a40;
+  --hi: #5aa2ff; --wire: #6d7584; --gate-fill: #1a1d23; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font-family: var(--font-ui); font-size: 15px; line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 960px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+header.top .wrap { display: flex; gap: 4px; align-items: center; padding-block: 10px; overflow-x: auto; scrollbar-width: none; }
+header.top a { color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 500; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+header.top a:hover, header.top a:focus-visible { color: var(--fg); background: var(--soft); outline: none; }
+header.top .brand { color: var(--fg); font-weight: 800; margin-right: 6px; padding-left: 0; }
+main { display: grid; gap: 72px; padding-block: 40px 96px; }
+section { display: grid; gap: 20px; scroll-margin-top: 64px; min-width: 0; }
+.eyebrow { justify-self: start; font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 3px 10px; border-radius: 999px; letter-spacing: .02em; }
+h1 { font-size: clamp(30px, 6vw, 42px); line-height: 1.2; margin: 0; font-weight: 800; letter-spacing: -.02em; text-wrap: balance; }
+h2 { font-size: clamp(24px, 4.5vw, 30px); line-height: 1.25; margin: 0; font-weight: 800; letter-spacing: -.015em; text-wrap: balance; }
+h3 { font-size: 18px; margin: 0; font-weight: 700; }
+h4 { font-size: 15px; margin: 0; font-weight: 700; }
+p { margin: 0; max-width: 68ch; }
+.sub { color: var(--muted); font-weight: 500; }
+.lead { font-size: 16.5px; }
+.head { display: grid; gap: 8px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; display: grid; gap: 12px; min-width: 0; align-content: start; }
+.note { background: var(--soft); border-radius: var(--r); padding: 18px 20px; display: grid; gap: 6px; min-width: 0; align-content: start; }
+.note.blue { background: var(--accent-soft); }
+.callout { border: 1.5px solid var(--accent); border-radius: var(--r); padding: 16px 20px; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.chip { font-size: 12px; font-weight: 700; color: #fff; background: var(--accent); padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+:root[data-theme="dark"] .chip { color: #0b1220; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chip { color: #0b1220; } }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 720px) { .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); } }
+.scroll { overflow-x: auto; min-width: 0; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-size: 12.5px; font-weight: 700; color: var(--muted); padding: 8px 10px; border-bottom: 1.5px solid var(--fg); white-space: nowrap; }
+td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.tt td, .tt th { text-align: center; }
+.tt tr.on td { background: var(--accent-soft); }
+.tt tr.on td.f { color: var(--accent); }
+.tt tbody tr { cursor: pointer; }
+.tt tbody tr:hover td { outline: 0; background: var(--soft); }
+.tt tbody tr.on:hover td { background: var(--accent-soft); }
+.tt tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.tt td.z { font-weight: 800; }
+.tt td.dim { color: var(--muted); }
+.tt td.f { font-weight: 800; }
+.m { font-family: var(--font-math); font-style: italic; font-size: 1.12em; white-space: nowrap; }
+.m.wrap-ok { white-space: normal; }
+.m .k, .m .n { font-style: normal; }
+.ov { display: inline-block; border-top: .07em solid currentColor; padding-top: .06em; line-height: 1.05; }
+.fbox { background: var(--soft); border-radius: var(--r); padding: 16px 18px; text-align: center; font-size: 19px; overflow-x: auto; }
+.fbox .m { white-space: normal; }
+.steps { display: grid; gap: 8px; counter-reset: s; margin: 0; padding: 0; list-style: none; }
+.steps li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.steps li::before { counter-increment: s; content: counter(s); width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--bg); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+.alg td:first-child { font-size: 17px; }
+.alg td:last-child { color: var(--muted); font-size: 13px; width: 40%; }
+.alg tr.ans td:first-child { font-weight: 500; }
+.ok { color: #138a4b; font-weight: 700; }
+:root[data-theme="dark"] .ok { color: #4fd08a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ok { color: #4fd08a; } }
+.bad { color: #c62f2f; font-weight: 700; }
+.small { font-size: 13px; color: var(--muted); }
+.row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
+.row > * { min-width: 0; }
+.kmapbox { display: grid; gap: 8px; justify-items: start; }
+.legend { display: flex; gap: 8px; flex-wrap: wrap; }
+.legend > span { display: inline-flex; align-items: center; gap: 6px; background: var(--soft); border-radius: 999px; padding: 2px 10px 2px 6px; font-size: 13px; }
+.legend > span > i { width: 16px; height: 9px; border-radius: 5px; border: 2px solid; display: inline-block; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tabs button { font: inherit; font-size: 14px; font-weight: 700; border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 6px 16px; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.tabs button:focus-visible, .btn:focus-visible, .sw:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn { font: inherit; font-size: 14px; font-weight: 700; border: 0; background: var(--accent); color: var(--bg); border-radius: 999px; padding: 8px 18px; cursor: pointer; justify-self: start; }
+.panel { display: grid; gap: 56px; }
+.part { display: grid; gap: 16px; min-width: 0; }
+.part > .ph { display: grid; gap: 4px; border-top: 1px solid var(--line); padding-top: 20px; }
+.simbar { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 50px); z-index: 3; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; box-shadow: 0 6px 20px -12px rgba(0,0,0,.35); }
+.sw { font: inherit; font-family: var(--font-mono); font-size: 14px; border: 1.5px solid var(--line); background: var(--soft); color: var(--fg); border-radius: 10px; padding: 3px 10px; cursor: pointer; min-width: 64px; }
+.sw.on { border-color: var(--hi); background: var(--accent-soft); color: var(--hi); }
+.simbar label { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+.simbar .out { font-family: var(--font-mono); font-weight: 700; }
+.circ { overflow-x: auto; }
+.circ svg { display: block; }
+svg text { font-family: var(--font-mono); fill: var(--fg); }
+svg .lbl { font-size: 10px; }
+svg .num { font-size: 9px; fill: var(--muted); }
+svg .rl { font-size: 12px; font-weight: 700; }
+svg .w { fill: none; stroke: var(--wire); stroke-width: 1.3; stroke-linejoin: round; }
+svg .g { fill: var(--gate-fill); stroke: var(--fg); stroke-width: 1.5; }
+svg .ovl { stroke: var(--fg); stroke-width: .9; }
+svg .dot { fill: var(--wire); }
+.sim svg .w.w1 { stroke: var(--hi); stroke-width: 2.2; }
+.sim svg .dot.w1 { fill: var(--hi); }
+svg .val { font-size: 10px; font-weight: 700; fill: var(--hi); display: none; }
+.sim svg .val { display: inline; }
+svg .km-line { stroke: var(--line); stroke-width: 1; fill: var(--surface); }
+svg .km-axis { stroke: var(--fg); stroke-width: 1.2; }
+svg .km-v { font-family: var(--font-ui); font-size: 15px; font-weight: 700; }
+svg .km-v.zero { fill: var(--muted); font-weight: 500; }
+svg .km-i { font-size: 8.5px; fill: var(--muted); }
+svg .km-h { font-family: var(--font-ui); font-size: 12px; font-weight: 700; }
+svg .grp { fill: none; stroke-width: 2.2; }
+.minis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 720px) { .minis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.mini { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; display: grid; gap: 4px; }
+.mini svg { width: 100%; height: auto; }
+.score input { width: 56px; font: inherit; font-size: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 8px; padding: 3px 6px; font-variant-numeric: tabular-nums; }
+.score input:focus-visible { outline: 2px solid var(--accent); }
+.pts { display: inline-block; font-size: 11px; font-weight: 700; background: var(--fg); color: var(--bg); border-radius: 999px; padding: 0 7px; margin: 0 2px; }
+.qlist { display: grid; gap: 8px; }
+.q { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: center; }
+.q b { width: 28px; height: 28px; border-radius: 50%; background: var(--fg); color: var(--bg); display: grid; place-items: center; font-size: 13px; }
+.q .fbox { text-align: left; font-size: 17px; padding: 10px 14px; }
+a { color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="#top">불 대수 5문제</a>
+  <a href="#intro">개요</a><a href="#sheet">문제지</a><a href="#key">정답</a><a href="#sol">해설</a><a href="#wrap">정리</a>
+</div></header>
+
+<div class="wrap">
+<main id="top">
+
+<section id="intro">
+  <span class="eyebrow">불 대수 집중 · 5문제</span>
+  <div class="head">
+    <h1>불 대수 집중 5문제</h1>
+    <p class="sub">시험 문제 7(54점)과 같은 형식, ①~⑦ 전 과정 해설</p>
+  </div>
+  <p class="lead">시험에서 가장 배점이 큰 <b>문제 7</b>만 다섯 번 연습하는 문제집이에요. 다섯 함수 모두 원 시험과 같은 설계(괄호 4개의 역할, 1이 3개, 항 복제 필요)를 따르지만, 바의 위치가 달라서 진리표와 묶는 방향이 매번 달라져요.</p>
+  <div class="scroll card" style="padding:8px 12px"><table id="overview"><thead><tr><th>문제</th><th>함수</th><th>포인트</th><th>해설</th></tr></thead><tbody></tbody></table></div>
+  <h4 class="sub">다섯 함수의 1의 위치 — 매번 다르다</h4>
+  <div class="minis" id="minis"></div>
+  <div class="grid3">
+    <div class="note"><h4>① 진리표</h4><p class="small">괄호별 ‘0이 되는 조건’ → 진리표 → 카르노 맵</p></div>
+    <div class="note"><h4>②~⑤ 식</h4><p class="small">표준형 → 최소화 과정 (각 줄에 법칙 번호, 각 줄 검산)</p></div>
+    <div class="note"><h4>⑥⑦ 회로</h4><p class="small">⑥ 주어진 식 회로, ⑦ 회로 4개와 개수, 신호 추적</p></div>
+  </div>
+  <div class="grid2">
+    <div class="note"><h4>① 시간 재고 풀기</h4><p>문제지에서 한 문제를 골라 답안지에 ①~⑦을 모두 써요. 한 문제에 25~30분이 목표예요(시험에서는 문제 7에 약 33분).</p></div>
+    <div class="note"><h4>② 단계별 채점</h4><p>정답 한눈에로 채점하고, 틀린 단계만 해설에서 확인해요. 특히 ①이 틀리면 뒤가 다 틀리니 ①부터 봐요.</p></div>
+  </div>
+  <p class="small">이 페이지의 진리표, 최소화 과정의 모든 줄, 카르노 맵, 회로는 브라우저가 함수 정의에서 직접 계산해 그려요. 각 줄은 8가지 입력을 모두 넣어 F와 같은지 검사하고, 결과를 화면에 표시해요.</p>
+</section>
+
+<section id="sheet">
+  <span class="eyebrow">문제지</span>
+  <div class="head"><h2>문제지 — 5문제</h2><p class="sub">한 문제씩 ①~⑦을 모두 풀어 보세요</p></div>
+  <div class="card">
+    <p><b>다음 주어진 표현을 물음에 맞게 작성하시오.</b> <span class="small">[각 문제 54점 · 시험 문제 7과 같은 배점]</span></p>
+    <div class="qlist" id="qlist"></div>
+    <p class="small" style="color:var(--fg)">각 문제마다 ① <span class="pts">5점</span> 진리표 ② <span class="pts">5점</span> 최소항 기호 · 표준형 SOP ③ <span class="pts">5점</span> 최대항 기호 · 표준형 POS<br>④ <span class="pts">5점</span> ②의 최소화(과정) ⑤ <span class="pts">5점</span> ③의 최소화(과정) ⑥ <span class="pts">5점</span> 주어진 식 그대로 회로 [NOT 제외 2입력]<br>⑦ <span class="pts">24점</span> ②③④⑤의 회로와 2입력 게이트 개수 각각</p>
+  </div>
+  <div class="scroll"><table class="score" id="score"><thead><tr><th>문제</th><th>①</th><th>②③</th><th>④⑤</th><th>⑥</th><th>⑦</th><th>합계 / 54</th><th>걸린 시간(분)</th></tr></thead><tbody></tbody></table></div>
+  <p class="small">점수와 시간은 이 브라우저에만 저장돼요.</p>
+  <div class="grid2">
+    <div class="note"><h4>답안지 배치 예시</h4><p>① 진리표(괄호별 열 포함) → 오른쪽에 ②③ 식<br>④⑤ 최소화는 줄마다 오른쪽에 법칙 번호<br>⑥ 회로 한 장, ⑦ 회로 네 장은 2×2로 배치<br>각 회로 아래에 ‘2입력 게이트 n개’를 한 줄씩</p></div>
+    <div class="note"><h4>한 문제 시간 계획</h4><p>① 6분 → ②③ 4분 → ④⑤ 8분 → ⑥ 4분 → ⑦ 8분 → 검산 3분. 합계 약 33분이면 실제 시험의 문제 7 시간과 같아요.</p></div>
+  </div>
+  <div class="callout"><span class="chip">선생님 한마디</span><p style="flex:1 1 280px">다섯 문제 모두 괄호 순서는 같아요: 바 없는 3입력 합 → 2입력 합 → 긴 바가 덮은 곱 → 바가 두 개인 3입력 합. 순서가 같으니 ‘괄호마다 0이 되는 조건’을 찾는 손동작을 익히기 좋아요.</p></div>
+</section>
+
+<section id="key">
+  <span class="eyebrow">정답</span>
+  <div class="head"><h2>정답 한눈에</h2><p class="sub">채점용 — 자세한 과정은 문제별 해설에서</p></div>
+  <button class="btn" id="keyBtn" type="button" aria-expanded="false" aria-controls="keyBody">정답 펼치기</button>
+  <div id="keyBody" hidden style="display:grid;gap:20px">
+    <div class="scroll card" style="padding:8px 12px"><table id="key1"><thead><tr><th>문제</th><th>② 최소항</th><th>③ 최대항</th><th>④ 최소 SOP</th><th>⑤ 최소 POS</th><th>⑥ · ②③④⑤ 게이트</th></tr></thead><tbody></tbody></table></div>
+    <div class="scroll card" style="padding:8px 12px"><table id="key2"><thead><tr><th>문제</th><th>④에서 복제할 최소항</th><th>⑤에서 복제할 최대항</th><th>⑤의 4칸 묶음 (한 글자)</th></tr></thead><tbody></tbody></table></div>
+    <p class="small" id="keyCheck"></p>
+  </div>
+  <h4 class="sub">다섯 문제에 공통인 패턴</h4>
+  <ol class="steps">
+    <li><span>F = 1인 줄이 3개 → ② 항 3개, ③ 괄호 5개</span></li>
+    <li><span>가운데 최소항 하나를 복제(법칙 5), 최대항 하나를 복제(법칙 6)해야 최소화된다</span></li>
+    <li><span>최소 SOP는 2글자 항 2개, 최소 POS는 1글자 × 2글자 합</span></li>
+    <li><span>2입력 게이트: ⑥ 9 · ② 8 · ③ 14 · ④ 3 · ⑤ 2 (NOT은 따로)</span></li>
+  </ol>
+  <div class="callout"><span class="chip">채점 팁</span><p style="flex:1 1 280px">④⑤의 답이 맞아도 과정의 법칙 번호가 빠지면 감점될 수 있어요 [추론]. 해설의 표처럼 줄마다 오른쪽에 법칙 번호를 적는 연습을 하세요.</p></div>
+</section>
+
+<section id="sol">
+  <span class="eyebrow">해설</span>
+  <div class="head"><h2>문제별 해설</h2><p class="sub">문제마다 ① 진리표 → ②~⑤ 식 → ⑥⑦ 회로</p></div>
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div id="panel" class="panel" role="tabpanel"></div>
+</section>
+
+<section id="wrap">
+  <span class="eyebrow">정리</span>
+  <div class="head"><h2>다섯 문제로 익힌 흐름</h2><p class="sub">시험장에서 그대로 쓰는 7단계 순서</p></div>
+  <div class="card scroll"><table><tbody id="flow"></tbody></table></div>
+  <div class="scroll"><table><thead><tr><th>단계</th><th>목표 시간</th><th>가장 흔한 실수</th></tr></thead><tbody>
+    <tr><td>①</td><td>6분</td><td>긴 바를 그냥 나눠서 곱으로 둠</td></tr>
+    <tr><td>②③</td><td>4분</td><td>최대항에 0인 변수에 바를 붙임</td></tr>
+    <tr><td>④⑤</td><td>8분</td><td>복제 없이 묶으려다 항이 남음</td></tr>
+    <tr><td>⑥</td><td>4분</td><td>3입력 OR를 한 게이트로 그림</td></tr>
+    <tr><td>⑦</td><td>8분</td><td>개수를 하나로 합쳐 씀</td></tr>
+    <tr><td>검산</td><td>3분</td><td>카르노 맵을 생략함</td></tr>
+  </tbody></table></div>
+  <div class="note blue"><h4>검산 두 가지</h4><p>① 카르노 맵에 1을 찍고 묶어서 ④⑤와 같은지 (30초) ② 회로에 1인 줄 하나, 0인 줄 하나를 넣어 출력이 맞는지 (신호 추적)</p></div>
+  <div class="callout"><span class="chip">한계</span><p style="flex:1 1 280px">다섯 문제는 공개된 시험지 한 장의 설계를 따른 예상 문제예요. 실제 시험에서 괄호 개수나 1의 개수가 달라질 수 있어요. 그럴 때도 ‘0이 되는 조건 → 진리표 → 짝 찾기’ 순서는 그대로 쓰면 돼요.</p></div>
+</section>
+
+</main>
+</div>
+
+<script>
+"use strict";
+/* ---------- 불 식 표현 ---------- */
+const VARS = ["A", "B", "C"];
+const L = (v, n = false) => ({ t: "v", v, n: !!n });
+const OR = (...a) => ({ t: "or", a });
+const AND = (...a) => ({ t: "and", a });
+const NOT = x => ({ t: "not", x });
+const K = v => ({ t: "c", v });
+const BR = e => ({ ...e, br: true });
+const bit = (i, v) => (i >> (2 - VARS.indexOf(v))) & 1;
+const envOf = i => ({ A: bit(i, "A"), B: bit(i, "B"), C: bit(i, "C") });
+const b3 = i => VARS.map(v => bit(i, v)).join("");
+const adj = (a, b) => [1, 2, 4].includes(a ^ b);
+function ev(e, env) {
+  switch (e.t) {
+    case "v": return env[e.v] ^ (e.n ? 1 : 0);
+    case "c": return e.v;
+    case "not": return 1 - ev(e.x, env);
+    case "or": return e.a.some(x => ev(x, env)) ? 1 : 0;
+    case "and": return e.a.every(x => ev(x, env)) ? 1 : 0;
+  }
+}
+const tt = e => [0, 1, 2, 3, 4, 5, 6, 7].map(i => ev(e, envOf(i)));
+const same = (e, f) => tt(e).join() === tt(f).join();
+
+function r(e) {
+  switch (e.t) {
+    case "v": return e.n ? `<span class="ov">${e.v}</span>` : e.v;
+    case "c": return `<span class="k">${e.v}</span>`;
+    case "not": { const s = `<span class="ov">${r(e.x)}</span>`; return e.par ? `(${s})` : s; }
+    case "and": return e.a.map(x => x.t === "or" ? (x.br ? `[${r(x)}]` : `(${r(x)})`) : x.t === "c" ? ` · ${r(x)}` : r(x)).join("");
+    case "or": return e.a.map(x => x.t === "or" ? `(${r(x)})` : r(x)).join(" + ");
+  }
+}
+// 정답 대조용 평문 (바 = 결합 문자 U+0305)
+function plain(e) {
+  switch (e.t) {
+    case "v": return e.n ? e.v + "̅" : e.v;
+    case "c": return String(e.v);
+    case "and": return e.a.map(x => x.t === "or" ? `(${plain(x)})` : plain(x)).join("");
+    case "or": return e.a.map(x => x.t === "or" ? `(${plain(x)})` : plain(x)).join(" + ");
+    default: return "?";
+  }
+}
+const M = (e, wrap) => `<span class="m${wrap ? " wrap-ok" : ""}">${r(e)}</span>`;
+const sub = (s, i) => `<span class="m">${s}<sub class="n">${i}</sub></span>`;
+const mt = i => AND(...VARS.map(v => L(v, !bit(i, v))));
+const Mt = i => OR(...VARS.map(v => L(v, bit(i, v) === 1)));
+const flip = l => L(l.v, !l.n);
+
+/* ---------- 다섯 문제 ---------- */
+const P = [
+  { c: [OR(L("A"), L("B"), L("C")), OR(L("A"), L("B", 1)), NOT(AND(L("A", 1), L("C"))), OR(L("A", 1), L("B", 1), L("C"))],
+    point: "기본 — 원 시험과 같은 자리의 바", trace: 5,
+    key: { m: [4, 5, 7], sop: "AB̅ + AC", pos: "A(B̅ + C)", dm: 5, dM: 2, g: "A" } },
+  { c: [OR(L("A"), L("B"), L("C")), OR(L("A"), L("B", 1)), NOT(AND(L("B"), L("C", 1))), OR(L("A", 1), L("B", 1), L("C", 1))],
+    point: "바가 B·C 쪽으로 이동", trace: 5,
+    key: { m: [1, 4, 5], sop: "B̅C + AB̅", pos: "B̅(A + C)", dm: 5, dM: 2, g: "B̅" } },
+  { c: [OR(L("A"), L("B"), L("C")), OR(L("A", 1), L("B")), NOT(AND(L("B", 1), L("C"))), OR(L("A", 1), L("B", 1), L("C", 1))],
+    point: "1이 가운데 열(B = 1)에 모임", trace: 2,
+    key: { m: [2, 3, 6], sop: "A̅B + BC̅", pos: "B(A̅ + C̅)", dm: 2, dM: 5, g: "B" } },
+  { c: [OR(L("A"), L("B"), L("C")), OR(L("A"), L("C", 1)), NOT(AND(L("B", 1), L("C"))), OR(L("A", 1), L("B", 1), L("C", 1))],
+    point: "끝 열이 이어지는 묶음 (C = 0)", trace: 6,
+    key: { m: [2, 4, 6], sop: "BC̅ + AC̅", pos: "C̅(A + B)", dm: 6, dM: 1, g: "C̅" } },
+  { c: [OR(L("A"), L("B"), L("C")), OR(L("A", 1), L("C")), NOT(AND(L("B"), L("C", 1))), OR(L("A"), L("B", 1), L("C", 1))],
+    point: "0을 묶을 때 C = 0 열 4칸", trace: 5,
+    key: { m: [1, 5, 7], sop: "B̅C + AC", pos: "C(A + B̅)", dm: 5, dM: 2, g: "C" } },
+];
+
+function analyze(p) {
+  const F = AND(...p.c.map(c => c.t === "not" ? { ...c, par: true } : c));
+  const T = tt(F);
+  const ms = T.map((v, i) => v ? i : -1).filter(i => i >= 0);
+  const Ms = T.map((v, i) => v ? -1 : i).filter(i => i >= 0);
+  // ④ SOP: 두 최소항과 모두 이웃한 최소항을 복제
+  const c = ms.find(m => ms.filter(o => o !== m).every(o => adj(m, o)));
+  const [x, y] = ms.filter(m => m !== c);
+  const pairT = (a, b) => {
+    const dv = VARS.find(v => bit(a, v) !== bit(b, v));
+    return { common: VARS.filter(v => v !== dv).map(v => L(v, !bit(a, v))), a: L(dv, !bit(a, dv)), b: L(dv, !bit(b, dv)) };
+  };
+  const t1 = pairT(x, c), t2 = pairT(c, y);
+  const sopMin = OR(AND(...t1.common), AND(...t2.common));
+  const sop = [
+    [OR(...ms.map(mt)), "② 표준형 SOP"],
+    [OR(mt(x), mt(c), mt(c), mt(y)), `법칙 5·10 — ${M(mt(c))} 복제, 짝끼리 모으기`],
+    [OR(AND(...t1.common, OR(t1.a, t1.b)), AND(...t2.common, OR(t2.a, t2.b))), "법칙 11·14 — 교환, 분배"],
+    [OR(AND(...t1.common, K(1)), AND(...t2.common, K(1))), `법칙 7 — ${M(OR(L("X"), L("X", 1)))} <span class="m">= 1</span>`],
+    [sopMin, `법칙 2 — <span class="m">X · 1 = X</span>`],
+  ];
+  // ⑤ POS: 4칸 묶음 G와 남은 최대항 e, e와 이웃한 d를 복제
+  let gv, gb, G;
+  for (const v of VARS) for (const b of [0, 1]) { const s = Ms.filter(i => bit(i, v) === b); if (s.length === 4) { gv = v; gb = b; G = s; } }
+  const e = Ms.find(i => !G.includes(i));
+  const d = G.find(g => adj(g, e));
+  const L0 = L(gv, gb === 1);
+  const [u, w] = VARS.filter(v => v !== gv);
+  const um = 1 << (2 - VARS.indexOf(u));
+  const gp = []; const used = new Set();
+  [...G].sort((a, b) => a - b).forEach(g => { if (!used.has(g)) { used.add(g); used.add(g ^ um); gp.push([g, g ^ um]); } });
+  const pd = [Math.min(d, e), Math.max(d, e)];
+  const pairS = (a, b) => {
+    const z = VARS.find(v => bit(a, v) !== bit(b, v));
+    return { common: VARS.filter(v => v !== z).map(v => L(v, bit(a, v) === 1)), a: L(z, bit(a, z) === 1), b: L(z, bit(b, z) === 1) };
+  };
+  const s1 = pairS(...gp[0]), s2 = pairS(...gp[1]), s3 = pairS(...pd);
+  const wl = s => s.common.find(l => l.v === w);
+  const posMin = AND(L0, OR(...s3.common));
+  const pos = [
+    [AND(...Ms.map(Mt)), "③ 표준형 POS"],
+    [AND(...[...gp[0], ...gp[1], ...pd].map(Mt)), `법칙 6·10 — ${sub("M", d)} 복제, 짝끼리 모으기`],
+    [AND(...[s1, s2, s3].map(s => BR(OR(OR(...s.common), AND(s.a, s.b))))), "법칙 15 — (X+Y)(X+Z) = X+YZ"],
+    [AND(OR(...s1.common), OR(...s2.common), OR(...s3.common)), `법칙 8, 1 — ${M(AND(L("X"), L("X", 1)))} <span class="m">= 0</span>, X + 0 = X`],
+    [AND(OR(L0, AND(wl(s1), wl(s2))), OR(...s3.common)), "법칙 15"],
+    [posMin, "법칙 8, 1"],
+  ];
+  const checks = [...sop, ...pos].map(([ex]) => same(ex, F));
+  return { F, T, ms, Ms, c, x, y, t1, t2, sop, sopMin, G, gv, gb, L0, e, d, gp, pd, pos, posMin, checks };
+}
+const A = P.map(analyze);
+
+/* ---------- 카르노 맵 (SVG) ---------- */
+const COL = [0, 1, 3, 2]; // BC 그레이 코드 순서
+function kmap(T, opt = {}) {
+  const cs = opt.cs || 40, ox = 56, oy = 44;
+  const W = ox + cs * 4 + 16, H = oy + cs * 2 + 10;
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${opt.w || W}" role="img" aria-label="카르노 맵">`;
+  s += `<line class="km-axis" x1="16" y1="8" x2="${ox - 6}" y2="${oy - 6}"/>`;
+  s += `<text class="km-h" x="${ox - 22}" y="14">BC</text><text class="km-h" x="10" y="${oy - 4}">A</text>`;
+  ["00", "01", "11", "10"].forEach((h, k) => s += `<text class="km-h" x="${ox + cs * k + cs / 2}" y="${oy - 10}" text-anchor="middle">${h}</text>`);
+  [0, 1].forEach(a => s += `<text class="km-h" x="${ox - 16}" y="${oy + cs * a + cs / 2 + 4}" text-anchor="middle">${a}</text>`);
+  for (let a = 0; a < 2; a++) for (let k = 0; k < 4; k++) {
+    const i = a * 4 + COL[k], X = ox + cs * k, Y = oy + cs * a;
+    s += `<rect class="km-line" x="${X}" y="${Y}" width="${cs}" height="${cs}"/>`;
+    if (!opt.noIdx) s += `<text class="km-i" x="${X + 3}" y="${Y + 10}">${i}</text>`;
+    const v = T[i];
+    if (v || opt.zeros) s += `<text class="km-v${v ? "" : " zero"}" x="${X + cs / 2}" y="${Y + cs / 2 + 5}" text-anchor="middle">${v}</text>`;
+  }
+  (opt.groups || []).forEach((g, gi) => {
+    const pad = 4 + gi * 4;
+    const cols = [...new Set(g.cells.map(i => COL.indexOf(i & 3)))].sort();
+    const rows = [...new Set(g.cells.map(i => i >> 2))].sort();
+    const y0 = oy + cs * rows[0] + pad, y1 = oy + cs * (rows[rows.length - 1] + 1) - pad;
+    const rect = (x0, x1) => s += `<rect class="grp" x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="${Math.min(12, (y1 - y0) / 2)}" style="stroke:${g.color}"/>`;
+    const wrapArround = cols.includes(0) && cols.includes(3) && cols.length < 4;
+    if (wrapArround) { rect(ox - 8, ox + cs - pad); rect(ox + cs * 3 + pad, ox + cs * 4 + 8); }
+    else rect(ox + cs * cols[0] + pad, ox + cs * (cols[cols.length - 1] + 1) - pad);
+  });
+  return s + "</svg>";
+}
+const G1 = "var(--accent)", G2 = "var(--fg)";
+const legend = items => `<div class="legend">${items.map(([c, h]) => `<span><i style="border-color:${c}"></i>${h}</span>`).join("")}</div>`;
+
+/* ---------- 회로 (SVG) ---------- */
+// spec: { terms: [{op:'or'|'and'|'nand'|'lit', lits:[...]}], comb:'and'|'or' }
+const opOf = { or: OR, and: AND };
+function termExpr(t) { return t.op === "lit" ? t.lits[0] : t.op === "nand" ? NOT(AND(...t.lits)) : opOf[t.op](...t.lits); }
+function gateCount(spec) { return spec.terms.reduce((n, t) => n + (t.op === "lit" ? 0 : t.lits.length - 1), 0) + spec.terms.length - 1; }
+function notCount(spec) { return new Set(spec.terms.flatMap(t => t.lits).filter(l => l.n).map(l => l.v)).size; }
+function specExpr(spec) { return opOf[spec.comb](...spec.terms.map(termExpr)); }
+function labelChars(t) {
+  const lc = l => [{ ch: l.v, ov: l.n }];
+  if (t.op === "nand") return [..."NAND(".split("").map(ch => ({ ch })), ...lc(t.lits[0]), { ch: "," }, ...lc(t.lits[1]), { ch: ")" }];
+  if (t.op === "lit") return lc(t.lits[0]);
+  const out = [];
+  t.lits.forEach((l, k) => { if (k && t.op === "or") out.push({ ch: "+" }); out.push(...lc(l)); });
+  return out;
+}
+const CW = 6.02; // 10px 모노 글자 폭
+function svgLabel(chars, x, y, cls = "lbl") {
+  let s = `<text class="${cls}" x="${x}" y="${y}">${chars.map(c => c.ch).join("")}</text>`;
+  const cw = cls === "rl" ? 7.22 : CW;
+  chars.forEach((c, k) => { if (c.ov) s += `<line class="ovl" x1="${x + k * cw + .6}" x2="${x + (k + 1) * cw - .6}" y1="${y - (cls === "rl" ? 10 : 8.6)}" y2="${y - (cls === "rl" ? 10 : 8.6)}"/>`; });
+  return s;
+}
+function circuit(spec, env, cap) {
+  const used = new Set(spec.terms.flatMap(t => t.lits).filter(l => l.n).map(l => l.v));
+  const rail = {}; let x = 22; const S = 24;
+  VARS.forEach(v => { rail[v + 0] = x; x += S; if (used.has(v)) { rail[v + 1] = x; x += S; } x += 4; });
+  const gx0 = x + 40;
+  let y = 100;
+  const rows = spec.terms.map(t => { const two = t.op !== "lit" && t.lits.length === 3; const row = { t, y }; y += two ? 66 : t.op === "lit" ? 44 : 50; return row; });
+  const H = y + 6;
+  let s = "", top = "";
+  const cls = v => `w ${v ? "w1" : "w0"}`;
+  const wire = (pts, v) => s += `<polyline class="${cls(v)}" points="${pts.map(p => p.join(",")).join(" ")}"/>`;
+  const dot = (px, py, v) => s += `<circle class="dot ${v ? "w1" : ""}" cx="${px}" cy="${py}" r="2.6"/>`;
+  const lv = l => env[l.v] ^ (l.n ? 1 : 0);
+  // 입력선과 NOT
+  VARS.forEach(v => {
+    const mx = rail[v + 0], val = env[v];
+    top += `<text class="rl" x="${mx}" y="16" text-anchor="middle">${v}</text>`;
+    wire([[mx, 24], [mx, H]], val);
+    if (rail[v + 1] !== undefined) {
+      const cx = rail[v + 1];
+      wire([[mx, 30], [cx, 30], [cx, 36]], val); dot(mx, 30, val);
+      top += `<path class="g" d="M${cx - 7},36 L${cx + 7},36 L${cx},48 Z"/><circle class="g" cx="${cx}" cy="51" r="3"/>`;
+      wire([[cx, 54], [cx, H]], 1 - val);
+      top += svgLabel([{ ch: v, ov: true }], cx + 5, 68);
+    }
+  });
+  let num = 0;
+  const gate = (op, gx, gy, val) => {
+    num++;
+    let d, ox;
+    if (op === "or") { d = `M${gx},${gy - 13} Q${gx + 9},${gy} ${gx},${gy + 13} Q${gx + 20},${gy + 13} ${gx + 32},${gy} Q${gx + 20},${gy - 13} ${gx},${gy - 13} Z`; ox = gx + 32; }
+    else { d = `M${gx},${gy - 13} h17 a13,13 0 0 1 0,26 h-17 Z`; ox = gx + 30; }
+    top += `<path class="g" d="${d}"/>`;
+    if (op === "nand") { top += `<circle class="g" cx="${gx + 33.5}" cy="${gy}" r="3"/>`; ox = gx + 37; }
+    top += `<text class="num" x="${gx + (op === "or" ? 13 : 10)}" y="${gy + 3}">${num}</text>`;
+    const ix = gx + (op === "or" ? 4 : 0);
+    return { out: [ox, gy], a: [ix, gy - 7], b: [ix, gy + 7], val };
+  };
+  const tap = (l, to) => { const rx = rail[l.v + (l.n ? 1 : 0)], v = lv(l); wire([[rx, to[1]], to], v); dot(rx, to[1], v); };
+  rows.forEach(row => {
+    const t = row.t, val = ev(termExpr(t), env);
+    if (t.op === "lit") { const l = t.lits[0]; const rx = rail[l.v + (l.n ? 1 : 0)]; dot(rx, row.y, val); row.out = [rx, row.y]; row.val = val; top += svgLabel(labelChars(t), gx0 + 40, row.y - 4); return; }
+    if (t.lits.length === 2) {
+      const g = gate(t.op, gx0, row.y, val); tap(t.lits[0], g.a); tap(t.lits[1], g.b); row.out = g.out;
+    } else {
+      const v1 = ev(opOf[t.op](t.lits[0], t.lits[1]), env);
+      const g1 = gate(t.op, gx0, row.y, v1); tap(t.lits[0], g1.a); tap(t.lits[1], g1.b);
+      const g2 = gate(t.op, gx0 + 56, row.y + 16, val);
+      wire([g1.out, [g2.a[0] - 10, g1.out[1]], [g2.a[0] - 10, g2.a[1]], g2.a], v1);
+      tap(t.lits[2], g2.b); row.out = g2.out;
+    }
+    row.val = val;
+    top += svgLabel(labelChars(t), row.out[0] + 6, row.out[1] - 5);
+    top += `<text class="val" x="${row.out[0] + 6}" y="${row.out[1] + 13}">${val}</text>`;
+  });
+  const cx0 = gx0 + 168;
+  let prev = { p: rows[0].out, v: rows[0].val };
+  const route = (from, to, v) => wire([from, [to[0] - 10, from[1]], [to[0] - 10, to[1]], to], v);
+  for (let i = 1; i < rows.length; i++) {
+    const cy = Math.round((prev.p[1] + rows[i].out[1]) / 2);
+    const v = spec.comb === "and" ? prev.v & rows[i].val : prev.v | rows[i].val;
+    const g = gate(spec.comb, cx0 + (i - 1) * 50, cy, v);
+    route(prev.p, g.a, prev.v); route(rows[i].out, g.b, rows[i].val);
+    prev = { p: g.out, v };
+  }
+  wire([prev.p, [prev.p[0] + 22, prev.p[1]]], prev.v);
+  top += `<text class="rl" x="${prev.p[0] + 27}" y="${prev.p[1] + 4}">F</text><text class="val" x="${prev.p[0] + 37}" y="${prev.p[1] + 4}" style="font-size:12px">= ${prev.v}</text>`;
+  const W = prev.p[0] + 70;
+  return { svg: `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${cap || "회로"}">${s}${top}</svg>`, out: prev.v };
+}
+
+/* ---------- 문제별 회로 구성 ---------- */
+function specs(a, p) {
+  const given = { comb: "and", terms: p.c.map(c => c.t === "not" ? { op: "nand", lits: c.x.a } : { op: "or", lits: c.a }) };
+  const sopStd = { comb: "or", terms: a.ms.map(i => ({ op: "and", lits: mt(i).a })) };
+  const posStd = { comb: "and", terms: a.Ms.map(i => ({ op: "or", lits: Mt(i).a })) };
+  const sopMin = { comb: "or", terms: a.sopMin.a.map(t => ({ op: "and", lits: t.a })) };
+  const posMin = { comb: "and", terms: [{ op: "lit", lits: [a.L0] }, { op: "or", lits: a.posMin.a[1].a }] };
+  return { given, sopStd, posStd, sopMin, posMin };
+}
+
+/* ---------- 화면 그리기 ---------- */
+const $ = id => document.getElementById(id);
+const fx = (p, a) => `F(A, B, C) = ${r(a.F)}`;
+
+// 개요 표와 미니 맵
+$("overview").tBodies[0].innerHTML = P.map((p, k) => `<tr><td>${k + 1}</td><td><span class="m">F = ${r(A[k].F)}</span></td><td>${p.point}</td><td><a href="#p${k + 1}" data-go="${k}">문제 ${k + 1} 보기</a></td></tr>`).join("");
+$("minis").innerHTML = A.map((a, k) => `<div class="mini"><b>문제 ${k + 1}</b>${kmap(a.T, { cs: 30, noIdx: true })}</div>`).join("");
+$("qlist").innerHTML = A.map((a, k) => `<div class="q"><b>${k + 1}</b><div class="fbox"><span class="m">${fx(P[k], a)}</span></div></div>`).join("");
+
+// 점수표 (이 브라우저에만 저장)
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { } } };
+const parts = ["s1", "s23", "s45", "s6", "s7", "time"];
+const partName = { s1: "①", s23: "②③", s45: "④⑤", s6: "⑥", s7: "⑦", time: "걸린 시간" };
+const cell = (k, pt) => `<td><input id="sc-${k}-${pt}" inputmode="numeric" aria-label="문제 ${k + 1} ${partName[pt]}"></td>`;
+$("score").tBodies[0].innerHTML = P.map((_, k) => `<tr><td>${k + 1}</td>${parts.slice(0, 5).map(pt => cell(k, pt)).join("")}<td id="sum-${k}">–</td>${cell(k, "time")}</tr>`).join("");
+function sums() {
+  P.forEach((_, k) => {
+    const v = ["s1", "s23", "s45", "s6", "s7"].map(pt => parseFloat($(`sc-${k}-${pt}`).value));
+    $(`sum-${k}`).textContent = v.some(n => !isNaN(n)) ? v.reduce((s, n) => s + (isNaN(n) ? 0 : n), 0) : "–";
+  });
+}
+document.querySelectorAll(".score input").forEach(inp => {
+  const saved = store.get("b5:" + inp.id); if (saved) inp.value = saved;
+  inp.addEventListener("input", () => { store.set("b5:" + inp.id, inp.value); sums(); });
+});
+sums();
+
+// 정답 한눈에 + PDF 정답과 대조
+const gatesLine = a => { const sp = specs(a, P[A.indexOf(a)]); return [sp.given, sp.sopStd, sp.posStd, sp.sopMin, sp.posMin].map(gateCount); };
+$("key1").tBodies[0].innerHTML = A.map((a, k) => `<tr><td>${k + 1}</td><td><span class="m">Σm(${a.ms.join(", ")})</span></td><td><span class="m">ΠM(${a.Ms.join(", ")})</span></td><td>${M(a.sopMin)}</td><td>${M(a.posMin)}</td><td>${gatesLine(a).join(" · ")}</td></tr>`).join("");
+$("key2").tBodies[0].innerHTML = A.map((a, k) => {
+  const cells = [0, 1, 2, 3, 4, 5, 6, 7].filter(i => bit(i, a.gv) === a.gb);
+  return `<tr><td>${k + 1}</td><td>${sub("m", a.c)} <span class="m">= ${r(mt(a.c))}</span></td><td>${sub("M", a.d)} <span class="m">= (${r(Mt(a.d))})</span></td><td>${M(a.L0)} — 줄 ${cells.join(", ")}</td></tr>`;
+}).join("");
+const keyOk = A.map((a, k) => {
+  const kk = P[k].key;
+  return a.ms.join() === kk.m.join() && plain(a.sopMin) === kk.sop && plain(a.posMin) === kk.pos && a.c === kk.dm && a.d === kk.dM && plain(a.L0) === kk.g && gatesLine(a).join() === "9,8,14,3,2" && a.checks.every(Boolean);
+});
+$("keyCheck").innerHTML = keyOk.every(Boolean)
+  ? `<span class="ok">✓</span> 다섯 문제 모두 화면에서 계산한 결과가 원본 PDF의 정답표(최소항, 최소 SOP·POS, 복제할 항, 4칸 묶음, 게이트 개수)와 같아요.`
+  : `<span class="bad">!</span> 원본 정답표와 다른 문제: ${keyOk.map((o, k) => o ? "" : k + 1).filter(Boolean).join(", ")}`;
+$("keyBtn").addEventListener("click", () => { const b = $("keyBody"); b.hidden = !b.hidden; $("keyBtn").textContent = b.hidden ? "정답 펼치기" : "정답 접기"; $("keyBtn").setAttribute("aria-expanded", String(!b.hidden)); });
+
+// 정리의 7단계
+$("flow").innerHTML = [
+  ["①", "긴 바 → 드모르간 → 괄호별 ‘0이 되는 조건’ → 진리표 (여기에 시간을 가장 많이)"],
+  ["②③", "1인 줄 → 최소항(0에 바), 0인 줄 → 최대항(1에 바). 번호 합 = 0~7 확인"],
+  ["④", `두 짝에 모두 쓰이는 최소항 복제(5) → 분배(14) → ${M(OR(L("X"), L("X", 1)))} <span class="m">= 1</span> (7) → <span class="m">X · 1 = X</span> (2)`],
+  ["⑤", "두 묶음에 쓰이는 최대항 복제(6) → 법칙 15로 세 쌍 → 지우기(8, 1) → 다시 15 → 지우기"],
+  ["⑥", "주어진 식 그대로: 3입력은 2입력 사슬, 긴 바 곱은 NAND 1개, 괄호 곱은 AND 사슬"],
+  ["⑦", "회로 4개 + 개수 4개를 따로. 예상 개수 8 · 14 · 3 · 2"],
+].map(([a, b]) => `<tr><td style="width:56px;font-weight:700">${a}</td><td>${b}</td></tr>`).join("");
+
+/* ---------- 문제 해설 패널 ---------- */
+const state = P.map(p => ({ env: envOf(p.trace), sim: true }));
+let cur = 0;
+function zeroCond(c) {
+  if (c.t === "not") return { txt: c.x.a.map(l => `${l.v}=${l.n ? 0 : 1}`).join(", ") + " (곱이 1 → 뒤집혀 0)", e: c };
+  return { txt: c.a.map(l => `${l.v}=${l.n ? 1 : 0}`).join(", "), e: c };
+}
+function algTable(lines, F) {
+  return `<div class="scroll"><table class="alg"><tbody>${lines.map(([ex, why], k) => {
+    const ok = same(ex, F);
+    const pre = k === 0 ? "F = " : k === lines.length - 1 ? "∴ F = " : "= ";
+    return `<tr class="${k === lines.length - 1 ? "ans" : ""}"><td><span class="m wrap-ok">${pre}${r(ex)}</span></td><td>${why} <span class="${ok ? "ok" : "bad"}" title="8가지 입력 검사">${ok ? "✓" : "✗"}</span></td></tr>`;
+  }).join("")}</tbody></table></div>`;
+}
+function shapeOf(a) {
+  if (a.gv === "A") return `A = ${a.gb} 행 4칸이 한 줄로 이어진 묶음`;
+  const cols = [...new Set(a.G.map(i => COL.indexOf(i & 3)))].sort();
+  const names = cols.map(c => ["00", "01", "11", "10"][c]).join("·");
+  return cols[0] === 0 && cols[1] === 3 ? `양 끝 열(${names})이 이어진 2×2 묶음` : `이웃한 두 열(${names})의 2×2 묶음`;
+}
+function renderCircuits(k) {
+  const a = A[k], p = P[k], st = state[k], sp = specs(a, p);
+  const box = $("circ-" + k); if (!box) return;
+  const draw = (spec, cap) => circuit(spec, st.env, cap).svg;
+  const set = (id, h) => { const el = $(id); if (el) el.innerHTML = h; };
+  set(`c6-${k}`, draw(sp.given, "주어진 식 회로"));
+  set(`c2-${k}`, draw(sp.sopStd, "표준형 SOP 회로"));
+  set(`c4-${k}`, draw(sp.sopMin, "최소 SOP 회로"));
+  set(`c5-${k}`, draw(sp.posMin, "최소 POS 회로"));
+  set(`c3-${k}`, draw(sp.posStd, "표준형 POS 회로"));
+  const i = st.env.A * 4 + st.env.B * 2 + st.env.C;
+  box.classList.toggle("sim", st.sim);
+  VARS.forEach(v => { const b = $(`sw-${k}-${v}`); b.textContent = `${v} = ${st.env[v]}`; b.classList.toggle("on", !!st.env[v]); b.setAttribute("aria-pressed", String(!!st.env[v])); });
+  const outs = [sp.given, sp.sopStd, sp.posStd, sp.sopMin, sp.posMin].map(s => ev(specExpr(s), st.env));
+  $(`simout-${k}`).innerHTML = `입력 ${b3(i)} → F = ${a.T[i]} · 회로 5개 출력 ${outs.join(" ")} ${outs.every(o => o === a.T[i]) ? '<span class="ok">✓ 진리표와 일치</span>' : '<span class="bad">✗</span>'}`;
+  document.querySelectorAll(`#tt-${k} tbody tr`).forEach((tr, j) => tr.classList.toggle("sel", j === i));
+}
+function renderPanel(k) {
+  const a = A[k], p = P[k], sp = specs(a, p);
+  const nandC = p.c.find(c => c.t === "not");
+  const zc = p.c.map(zeroCond);
+  const ttRows = a.T.map((f, i) => `<tr class="${f ? "on" : ""}" data-i="${i}"><td class="dim">${i}</td>${VARS.map(v => `<td>${bit(i, v)}</td>`).join("")}${p.c.map(c => { const v = ev(c, envOf(i)); return `<td class="${v ? "dim" : "z"}">${v}</td>`; }).join("")}<td class="f">${f}</td></tr>`).join("");
+  const counts = { given: gateCount(sp.given), sopStd: gateCount(sp.sopStd), posStd: gateCount(sp.posStd), sopMin: gateCount(sp.sopMin), posMin: gateCount(sp.posMin) };
+  const nots = { given: notCount(sp.given), sopStd: notCount(sp.sopStd), posStd: notCount(sp.posStd), sopMin: notCount(sp.sopMin), posMin: notCount(sp.posMin) };
+  const gtab = p.c.map(c => {
+    if (c.t === "not") return [`<span class="m"><span class="ov">${r(c.x)}</span></span>`, "2입력 NAND (식을 바꾸지 않고 그대로)", 1];
+    return [`<span class="m">(${r(c)})</span>`, c.a.length === 3 ? "2입력 OR 2개 사슬" : "2입력 OR", c.a.length - 1];
+  });
+  gtab.push(["괄호 4개의 곱", "2입력 AND 3개 사슬", 3]);
+  const mStd = a.ms.map(i => r(mt(i))).join(" + ");
+  const MStd = a.Ms.map(i => `(${r(Mt(i))})`).join("");
+  const mtab = a.Ms.map(i => `<tr><td>${sub("M", i)} <span class="m">= (${r(Mt(i))})</span></td><td>${b3(i)}</td><td>${a.G.includes(i) ? "4칸 묶음" : "2칸 묶음"}</td><td>${i === a.d ? "<b>복제</b>" : ""}</td></tr>`).join("");
+  const sopG = [{ cells: [a.x, a.c], color: G1 }, { cells: [a.c, a.y], color: G2 }];
+  const posG = [{ cells: a.G, color: G1 }, { cells: a.pd, color: G2 }];
+  const posT = a.T.map(v => v); // 0을 보여 주는 맵
+  $("panel").innerHTML = `
+  <div class="part">
+    <div class="ph"><span class="eyebrow">문제 ${k + 1}</span><h3>① 진리표</h3><p class="sub">괄호 하나라도 0이면 F = 0</p></div>
+    <div class="fbox"><span class="m">${fx(p, a)}</span></div>
+    <ol class="steps">
+      <li><span>긴 바부터: ${M(nandC)} <span class="m">= ${r(OR(...nandC.x.a.map(flip)))}</span> (드모르간 법칙 17 → 이중 부정 법칙 9). 바를 나누면 곱이 합으로 바뀐다</span></li>
+      <li><span>괄호 안은 합 → 0이 되려면 안의 글자가 <b>모두 0</b>. 바 붙은 글자가 0이려면 원래 변수는 1</span></li>
+      <li><span>괄호마다 0이 되는 줄을 모은다 → 그 줄들이 F = 0, 나머지가 F = 1</span></li>
+    </ol>
+    <div class="scroll"><table><thead><tr><th>괄호</th><th>0이 되는 조건</th><th>F = 0인 줄</th></tr></thead><tbody>
+      ${zc.map(z => `<tr><td>${M(z.e)}</td><td>${z.txt}</td><td>${tt(z.e).map((v, i) => v ? null : b3(i)).filter(Boolean).join(", ")}</td></tr>`).join("")}
+    </tbody></table></div>
+    <div class="scroll"><table class="tt" id="tt-${k}"><thead><tr><th>#</th><th>A</th><th>B</th><th>C</th>${p.c.map(c => `<th>${M(c)}</th>`).join("")}<th>F</th></tr></thead><tbody>${ttRows}</tbody></table></div>
+    <div class="grid2">
+      <div class="card kmapbox">${kmap(a.T)}<p class="small">카르노 맵으로 보면: F = 1인 칸 ${a.ms.join(", ")}</p></div>
+      <div class="note"><h4>읽는 법</h4><p>굵은 0 = 그 괄호가 0. 파란 줄이 F = 1 → <span class="m">Σm(${a.ms.join(", ")})</span>. 0인 줄은 ${a.Ms.length}개로, 괄호 네 개의 ‘0이 되는 줄’을 합친 것과 정확히 같아요(중복 제외). 표의 줄을 누르면 아래 회로에 그 입력이 들어가요.</p></div>
+    </div>
+  </div>
+
+  <div class="part">
+    <div class="ph"><h3>② ③ 표준형</h3><p class="sub">1인 줄은 곱(최소항), 0인 줄은 합(최대항)</p></div>
+    <div class="grid2">
+      <div class="note blue"><span class="small">② 최소항 기호 · 표준형 SOP</span><p><span class="m">F = Σm(${a.ms.join(", ")})</span><br><span class="m wrap-ok">= ${mStd}</span></p></div>
+      <div class="note blue"><span class="small">③ 최대항 기호 · 표준형 POS</span><p><span class="m">F = ΠM(${a.Ms.join(", ")})</span><br><span class="m wrap-ok">= ${MStd}</span></p></div>
+    </div>
+    <div class="note"><h4>메커니즘</h4><p>최소항: 그 줄에서만 1이 되는 <b>곱</b> → 값이 0인 변수에 바. 최대항: 그 줄에서만 0이 되는 <b>합</b> → 값이 1인 변수에 바. 검산: Σm 번호 + ΠM 번호 = 0~7이 한 번씩.</p></div>
+  </div>
+
+  <div class="part">
+    <div class="ph"><h3>④ SOP 최소화</h3><p class="sub">오른쪽 ✓는 그 줄을 8가지 입력에 넣어 F와 같은지 이 페이지가 직접 검사한 결과예요</p></div>
+    ${algTable(a.sop, a.F)}
+    <div class="grid2">
+      <div class="card kmapbox">${kmap(a.T, { groups: sopG })}${legend([[G1, M(AND(...a.t1.common))], [G2, M(AND(...a.t2.common))]])}<p class="small">카르노 맵 검산: ${M(OR(...[a.sopMin]))}</p></div>
+      <div class="note"><h4>왜 복제하나</h4><p>${sub("m", a.c)} <span class="m">= ${r(mt(a.c))}</span>은 다른 두 최소항과 모두 한 비트만 달라요. 그래서 한 번 더 써서 짝 두 개에 각각 쓰고(법칙 5), 짝마다 다른 변수를 ${M(OR(L("X"), L("X", 1)))} <span class="m">= 1</span>로 지워요. 맵에서는 두 묶음이 겹치는 칸이에요.</p></div>
+    </div>
+  </div>
+
+  <div class="part">
+    <div class="ph"><h3>⑤ POS 최소화</h3><p class="sub">같은 원리를 곱과 합만 바꿔서 · 핵심: ${M(AND(OR(L("X"), L("Y")), OR(L("X"), L("Y", 1))))} <span class="m">= X</span></p></div>
+    ${algTable(a.pos, a.F)}
+    <div class="grid2">
+      <div class="card kmapbox">${kmap(posT, { zeros: true, groups: posG })}${legend([[G1, `<span class="m">(${r(a.L0)})</span>`], [G2, `<span class="m">(${r(a.posMin.a[1])})</span>`]])}<p class="small">0을 묶어 검산: ${M(a.posMin)}</p></div>
+      <div class="note"><h4>맵과 대수의 연결</h4><p>0인 칸 4개(${shapeOf(a)})가 ${M(a.L0)} 한 글자가 되고, 남은 0 하나는 이웃한 0과 짝지어 2글자 괄호가 돼요. 이때 그 이웃 0(${sub("M", a.d)})이 두 묶음에 모두 쓰이니 대수 풀이에서 복제(법칙 6)해요.</p></div>
+    </div>
+    <div class="scroll"><table><thead><tr><th>최대항</th><th>줄</th><th>들어가는 묶음</th><th>비고</th></tr></thead><tbody>${mtab}</tbody></table></div>
+    <div class="grid2">
+      <div class="note"><h4>전개해서 확인</h4><p>④⑤ 서로 검산: ${M(a.posMin)}를 전개하면 ${M(a.sopMin)}가 나와요. 두 식 모두 진리표와 일치해요 ${same(a.posMin, a.sopMin) && same(a.sopMin, a.F) ? '<span class="ok">✓</span>' : '<span class="bad">✗</span>'}</p></div>
+      <div class="note"><h4>순서 요약</h4><p>① 복제(법칙 6) → ② 세 쌍 묶기(법칙 15) → ③ ${M(AND(L("X"), L("X", 1)))} <span class="m">= 0</span> 지우기(법칙 8, 1) → ④ 남은 두 괄호를 다시 법칙 15 → ⑤ 지우기</p></div>
+    </div>
+  </div>
+
+  <div class="part" id="circ-${k}">
+    <div class="ph"><h3>⑥ ⑦ 회로와 신호 추적</h3><p class="sub">괄호 = 1단 게이트, 괄호끼리의 곱 = 2단 AND 사슬</p></div>
+    <div class="simbar">
+      ${VARS.map(v => `<button type="button" class="sw" id="sw-${k}-${v}" data-v="${v}"></button>`).join("")}
+      <label><input type="checkbox" id="simchk-${k}" ${state[k].sim ? "checked" : ""}> 신호 표시</label>
+      <span class="out small" id="simout-${k}"></span>
+    </div>
+    <p class="small">버튼으로 입력을 바꾸면 다섯 회로의 모든 선이 바뀌어요. 파란 선이 1이에요. 처음 입력 ${b3(p.trace)}은 원본 해설의 신호 추적과 같은 입력이에요.</p>
+
+    <h4>⑥ 주어진 식 그대로의 회로</h4>
+    <div class="card circ" id="c6-${k}"></div>
+    <p class="small">2입력 게이트 <b>${counts.given}개</b> + NOT ${nots.given}개</p>
+    <div class="scroll"><table><thead><tr><th>부분</th><th>게이트</th><th>개수</th></tr></thead><tbody>${gtab.map(g => `<tr><td>${g[0]}</td><td>${g[1]}</td><td>${g[2]}</td></tr>`).join("")}</tbody></table></div>
+    <div class="note"><h4>그리는 원칙</h4><p>3입력 합은 2입력 OR 두 개를 이어서(3개를 묶으려면 2개), 긴 바가 덮은 곱은 NAND 하나로 그려요. ⑥은 ‘주어진 식 그대로’라서 드모르간으로 바꾸지 않는 게 원칙이에요.</p></div>
+
+    <h4>⑦ ② 표준형 SOP 회로</h4>
+    <div class="card circ" id="c2-${k}"></div>
+    <p class="small">② 표준형 SOP: 2입력 게이트 <b>${counts.sopStd}개</b> (AND 2 × 3 + OR 2) · NOT ${nots.sopStd}개</p>
+    <div class="grid2">
+      <div><h4>⑦ ④ 최소 SOP</h4><div class="card circ" id="c4-${k}"></div><p class="small">④ ${M(a.sopMin)}: <b>${counts.sopMin}개</b> · NOT ${nots.sopMin}개</p></div>
+      <div><h4>⑦ ⑤ 최소 POS</h4><div class="card circ" id="c5-${k}"></div><p class="small">⑤ ${M(a.posMin)}: <b>${counts.posMin}개</b> · NOT ${nots.posMin}개</p></div>
+    </div>
+    <h4>⑦ ③ 표준형 POS 회로</h4>
+    <div class="card circ" id="c3-${k}"></div>
+    <p class="small">③ 표준형 POS: 2입력 게이트 <b>${counts.posStd}개</b> (OR 2 × 5 + AND 4) · NOT ${nots.posStd}개</p>
+    <div class="note blue"><h4>⑦ 답안 — 회로마다 각각</h4>
+      <div class="scroll"><table><thead><tr><th>회로</th><th>2입력</th><th>NOT</th></tr></thead><tbody>
+        <tr><td>② 표준형 SOP</td><td>${counts.sopStd}</td><td>${nots.sopStd}</td></tr>
+        <tr><td>③ 표준형 POS</td><td>${counts.posStd}</td><td>${nots.posStd}</td></tr>
+        <tr><td>④ 최소 SOP</td><td>${counts.sopMin}</td><td>${nots.sopMin}</td></tr>
+        <tr><td>⑤ 최소 POS</td><td>${counts.posMin}</td><td>${nots.posMin}</td></tr>
+      </tbody></table></div>
+      <p class="small">NOT은 공유해서 센 값</p>
+    </div>
+  </div>`;
+  VARS.forEach(v => $(`sw-${k}-${v}`).addEventListener("click", () => { state[k].env[v] ^= 1; renderCircuits(k); }));
+  $(`simchk-${k}`).addEventListener("change", e => { state[k].sim = e.target.checked; renderCircuits(k); });
+  document.querySelectorAll(`#tt-${k} tbody tr`).forEach(tr => tr.addEventListener("click", () => { state[k].env = envOf(+tr.dataset.i); renderCircuits(k); }));
+  renderCircuits(k);
+}
+function select(k, scroll) {
+  cur = k;
+  document.querySelectorAll("#tabs button").forEach((b, j) => b.setAttribute("aria-selected", String(j === k)));
+  renderPanel(k);
+  store.set("b5:tab", String(k));
+  if (scroll) $("sol").scrollIntoView();
+}
+$("tabs").innerHTML = P.map((_, k) => `<button type="button" role="tab" id="tab-${k}">문제 ${k + 1}</button>`).join("");
+document.querySelectorAll("#tabs button").forEach((b, k) => b.addEventListener("click", () => select(k)));
+document.querySelectorAll("[data-go]").forEach(a => a.addEventListener("click", ev2 => { ev2.preventDefault(); select(+a.dataset.go, true); }));
+const hm = /^#p([1-5])$/.exec(location.hash);
+select(hm ? +hm[1] - 1 : (+store.get("b5:tab") || 0), !!hm);
+</script>
+
+</body>
+</html>
