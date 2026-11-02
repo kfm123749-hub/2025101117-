@@ -6,22 +6,28 @@
     <title>Document</title>
 </head>
 <body>
+    <h1>JS 학점 계산</h1>
 <script>
     let number = prompt('점수를 입력하세요');
     if(number>=90){
         alert('A')
+        document.write(number + '점 : A 학점')
     }
     else if(number>=80){
         alert('B')
+        document.write(number + '점 : B 학점')
     }
     else if(number>=70){
         alert('C')
+        document.write(number + '점 : C 학점')
     }
     else if(number>=60){
         alert('D')
+        document.write(number + '점 : D 학점')
     }
     else{
         alert('F')
+        document.write(number + '점 : F 학점')
     }
 </script>
 </body>
