@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script>
+        $(document).ready(function(){
+            $('button').click(function(){
+                $('h1').css('color','red');
+                $('p').css('backgroundColor','yellow');
+            });
+        });
+    </script>
+</head>
+<body>
+    <h1>jQuery 예제</h1>
+    <p>삼육대</p>
+    <p>인지융</p>
+    <p>웹프</p>
+    <button>클릭하세요</button>
+</body>
+</html>
