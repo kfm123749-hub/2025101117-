@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script>
+    $(document).ready(function(){
+        $('a').click(function(event){
+            event.preventDefault();
+            alert('링크 이동 불가');
+        });
+    });
+</script>
+<body>
+    <h1>jQuery 이벤트처리</h1>
+    <p><a href="http://www.syu.ac.kr">삼육대학교</a></p>
+    <p id="i1">인공지능융합학부</p>
+    <button>클릭</button>
+</body>
+</html>
