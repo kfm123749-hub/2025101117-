@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>137.5도의 비밀</title>
+<link rel="stylesheet" href="node_modules/katex/dist/katex.min.css">
+<script src="node_modules/katex/dist/katex.min.js"></script>
+<style>
+@font-face{font-family:"Pretendard";font-weight:45 920;font-style:normal;
+  src:url("node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2") format("woff2-variations");}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:#000;overflow:hidden}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden;font-family:"Pretendard",sans-serif;color:#f5f5f7}
+canvas{position:absolute;left:0;top:0;width:1080px;height:1920px}
+.tx{position:absolute;left:0;width:1080px;text-align:center;opacity:0;white-space:nowrap}
+.katex{font-size:1em}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c" width="1080" height="1920"></canvas>
+  <div id="ui"></div>
+</div>
+<script>
+/* =========================================================
+   137.5°의 비밀 — 60초 모션그래픽
+   씨앗 배치 모델(Vogel, 1979): n번째 씨앗은 각도 2π·θ·n, 반지름 c·√n
+   ========================================================= */
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const W=1080,HH=1920,DUR=60;
+const cl=x=>Math.min(1,Math.max(0,x)),lerp=(a,b,s)=>a+(b-a)*s,seg=(t,a,b)=>cl((t-a)/(b-a));
+const sm=(x,a,b)=>{const p=cl((x-a)/(b-a));return p*p*(3-2*p)};
+const E={out:x=>1-Math.pow(1-x,3),in:x=>x*x*x,io:x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,
+  io5:x=>x<.5?16*x**5:1-Math.pow(-2*x+2,5)/2,expo:x=>x>=1?1:1-Math.pow(2,-10*x),
+  back:x=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}};
+function kf(t,ks,ease=E.io){if(t<=ks[0][0])return ks[0][1];
+  for(let i=1;i<ks.length;i++)if(t<=ks[i][0]){const [a,va]=ks[i-1],[b,vb]=ks[i];return va+(vb-va)*ease((t-a)/(b-a));}return ks[ks.length-1][1];}
+const io=(t,a,b,din=.6,dout=.4)=>E.out(seg(t,a,a+din))*(1-E.in(seg(t,b,b+dout)));
+const INK='#f5f5f7',SUB='#a1a1a6',GOLD='#ffc83d',OR='#ff8a1f',BLUE='#5ac8fa',VIO='#bf8cff',RED='#ff5a4f';
+
+function txt(s,x,y,size,weight,color,align='left',alpha=1,ls=-0.02){
+  if(alpha<=0.003)return 0;ctx.save();ctx.globalAlpha*=alpha;ctx.font=`${weight} ${size}px Pretendard`;ctx.letterSpacing=(ls*size)+'px';
+  ctx.textAlign=align;ctx.fillStyle=color;ctx.fillText(s,x,y);const w=ctx.measureText(s).width;ctx.restore();return w;}
+function meas(s,size,weight,ls=-0.02){ctx.save();ctx.font=`${weight} ${size}px Pretendard`;ctx.letterSpacing=(ls*size)+'px';const w=ctx.measureText(s).width;ctx.restore();return w;}
+function rich(parts,x,y,alpha=1,align='center'){
+  const ws=parts.map(p=>meas(p[0],p[1],p[2]));let cx=align==='center'?x-ws.reduce((a,b)=>a+b,0)/2:x;
+  parts.forEach((p,i)=>{txt(p[0],cx,y,p[1],p[2],p[3],'left',alpha);cx+=ws[i];});}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);}
+
+/* ---------- 상수 ---------- */
+const PHI=(1+Math.sqrt(5))/2, GOLDEN=1-1/PHI;            // 0.381966… 바퀴 = 137.5078°
+const INV_PI=1/Math.PI;
+const NMAX=900, FX=540, FY=940, C0=14;                   // 꽃 중심, √n 계수(px)
+const S={hook:0,s1:5,s2:13,s3:24,s4:33,s5:41.5,s6:52.5};
+
+/* ---------- 타임라인: 회전 각도(바퀴 단위) ---------- */
+function turnAt(t){
+  return kf(t,[[12.7,GOLDEN],[13.7,.5],[15.7,.5],[16.6,1/3],[18.3,1/3],[19.2,.4],[23.5,.4],[24.6,INV_PI],
+    [33.2,INV_PI],[37.0,.4472],[38.6,.3600],[39.7,.3925],[40.6,.3790],[41.3,GOLDEN]],E.io);
+}
+/* 씨앗 개수: 훅에서 피어남 → 1장에서 하나씩 → 다시 900개 */
+const ONE=[5.7,6.15,6.6,7.0,7.38,7.74,8.08,8.4,8.7,8.98];   // 1~10번째 씨앗 놓는 시각
+function nAt(t){
+  if(t<5.2)return lerp(34,NMAX,E.io5(seg(t,0,3.4)));
+  if(t<9.2){let k=0;for(const x of ONE)if(t>=x)k++;return k;}
+  return lerp(10,NMAX,E.in(seg(t,9.2,12.4))*.15+E.io(seg(t,9.2,12.4))*.85);
+}
+function flowerAlpha(t){return t<5.3?1-sm(t,4.55,5.05):sm(t,5.3,5.55);}
+/* 화면 확대: 씨앗이 적을 때는 크게 */
+function zoomAt(t){
+  if(t<5.2)return lerp(2.4,1,E.out(seg(t,0,3.6)));
+  const n=Math.max(1,nAt(t)+.6);return Math.min(7.5,Math.max(1,250/(C0*Math.sqrt(n))));
+}
+
+/* 수식이 나올 때 꽃을 위로 줄여 올림 */
+function layout(t){
+  const cy=kf(t,[[24.7,940],[25.4,890],[32.7,890],[33.4,940],[41.5,940],[42.1,850],[45.9,850],[46.6,915],[52.2,915],[52.9,940]]);
+  const sc=kf(t,[[24.7,1],[25.4,.84],[32.7,.84],[33.4,1],[41.5,1],[42.1,.74],[45.9,.74],[46.6,.9],[52.2,.9],[52.9,1]]);
+  return [cy,sc];
+}
+/* ---------- 씨앗 스프라이트 (빛번짐) ---------- */
+function sprite(col,r){
+  const s=document.createElement('canvas'),R=Math.ceil(r*3.2);s.width=s.height=R*2;const g=s.getContext('2d');
+  const gr=g.createRadialGradient(R,R,0,R,R,R);gr.addColorStop(0,col.replace('A','.55'));gr.addColorStop(.3,col.replace('A','.22'));gr.addColorStop(1,col.replace('A','0'));
+  g.fillStyle=gr;g.fillRect(0,0,R*2,R*2);return s;
+}
+const HALO=sprite('rgba(255,170,60,A)',10);
+function seedColor(f){        // 중심(밝은 금색) → 바깥(주황)
+  const a=[255,236,170],b=[255,150,40],c=[236,90,30];
+  const m=f<.6?a.map((v,i)=>lerp(v,b[i],f/.6)):b.map((v,i)=>lerp(v,c[i],(f-.6)/.4));
+  return m.map(Math.round);
+}
+const SEEDCOL=[...Array(NMAX+1)].map((_,n)=>seedColor(n/NMAX));
+function hsl2rgb(h,s,l){h/=360;const f=n=>{const k=(n+h*12)%12,a=s*Math.min(l,1-l);return l-a*Math.max(-1,Math.min(k-3,9-k,1))};return [f(0),f(8),f(4)].map(v=>Math.round(v*255));}
+const ARMC=m=>{const order=[...Array(m).keys()].sort((a,b)=>((a*GOLDEN)%1)-((b*GOLDEN)%1));const rank=[];order.forEach((k,i)=>rank[k]=i);
+  return [...Array(m)].map((_,k)=>rank[k]%2?hsl2rgb(m===21?20:268,.55,.2):hsl2rgb((m===21?22:272)+(m===21?22:-30)*Math.sin(Math.PI*rank[k]/m),1,.66));};
+const ARM21=ARMC(21),ARM34=ARMC(34);
+
+/* ---------- 배경 ---------- */
+function bg(t){
+  ctx.globalCompositeOperation='source-over';
+  ctx.fillStyle='#05060b';ctx.fillRect(0,0,W,HH);
+  const warm=.10+.10*sm(t,41.5,43)+.05*Math.sin(t*.7);
+  let g=ctx.createRadialGradient(FX,FY,0,FX,FY,900);g.addColorStop(0,`rgba(255,150,40,${warm.toFixed(3)})`);g.addColorStop(.55,'rgba(255,120,30,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);
+  const a=t/DUR*6.283;
+  g=ctx.createRadialGradient(150+200*Math.sin(a),120+160*Math.cos(a),0,150,120,900);g.addColorStop(0,'rgba(90,120,255,.13)');g.addColorStop(.6,'rgba(90,120,255,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);
+  g=ctx.createRadialGradient(950,1820,0,950,1820,800);g.addColorStop(0,'rgba(191,140,255,.10)');g.addColorStop(.6,'rgba(191,140,255,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);
+}
+
+/* ---------- 꽃 ---------- */
+let RANGE=0;
+function flower(t){
+  const A=flowerAlpha(t);if(A<=0.003)return;
+  const th=turnAt(t),n=nAt(t),z=zoomAt(t),nf=Math.floor(n),fr=n-nf;
+  const spin=t>S.s6?(t-S.s6)*.035:0;                       // 마지막 장면: 천천히 회전
+  const breathe=t>S.s6?1+.015*Math.sin((t-S.s6)*1.6):1;
+  const [LY,LS]=layout(t);
+  const zz=z*LS*breathe*(t>S.s6?lerp(1,.93,E.io(seg(t,S.s6,S.s6+2))):1);
+  const fib=t>=46?(t<49.4?21:34):0;
+  const fibA=t<46?0:(t<49.4?sm(t,46.4,47):(t<52.4?1:1-sm(t,52.2,53)));
+  const swap=t>=49?Math.min(sm(t,49.1,49.4),1-sm(t,49.4,49.7)):0;      // 21→34 전환 순간 깜빡임
+  const pts=[];
+  const cnt=Math.min(NMAX,Math.ceil(n));
+  for(let k=1;k<=cnt;k++){
+    const r=C0*Math.sqrt(k-.5)*zz,ang=2*Math.PI*(th*k+spin)-Math.PI/2;
+    pts.push([FX+r*Math.cos(ang),LY+r*Math.sin(ang),k]);
+  }
+  /* 1장: 마지막 씨앗을 놓는 회전 팔 */
+  if(t>=5.4&&t<9.4){
+    const k=Math.max(1,Math.min(10,nf)),ti=ONE[k-1]||ONE[0],p=E.out(seg(t,ti-.3,ti));
+    const a0=2*Math.PI*th*(k-1)-Math.PI/2,a1=2*Math.PI*th*k-Math.PI/2;
+    const armA=A*(1-sm(t,9,9.4));
+    ctx.save();ctx.globalAlpha=armA;
+    // 지난 씨앗들로부터의 회전 호
+    const R=Math.max(90,C0*Math.sqrt(k-.5)*zz+46);
+    ctx.strokeStyle='rgba(90,200,250,.85)';ctx.lineWidth=5;ctx.lineCap='round';
+    ctx.beginPath();ctx.arc(FX,FY,R,a1-2*Math.PI*th,a1-2*Math.PI*th+2*Math.PI*th*Math.max(.02,p*(nf>=1?1:0)));ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=2;ctx.setLineDash([6,8]);
+    ctx.beginPath();ctx.moveTo(FX,FY);ctx.lineTo(FX+R*Math.cos(a1),FY+R*Math.sin(a1));ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(FX,FY,6,0,6.283);ctx.fill();
+    ctx.restore();
+  }
+  /* 빛번짐 */
+  ctx.globalCompositeOperation='lighter';
+  const hs=Math.min(2.4,.9+.15*z)*LS;
+  for(const [x,y,k] of pts){
+    let a=A*(k>nf?fr:1)*(t<9.4&&t>5.2?1:.55);
+    const s=HALO.width*hs*(k>nf?E.back(fr):1);
+    ctx.globalAlpha=a;ctx.drawImage(HALO,x-s/2,y-s/2,s,s);
+  }
+  ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+  /* 씨앗 */
+  const base=Math.min(9.6*z,46)*LS;
+  for(const [x,y,k] of pts){
+    let rad=base*(.78+.3*(k/NMAX));
+    if(k>nf)rad*=E.back(cl(fr));
+    if(t<12.6&&t>5.2&&k===nf&&nf<=10){const ti=ONE[k-1];if(ti)rad*=1+.5*Math.sin(Math.PI*seg(t,ti,ti+.35));}
+    let c=SEEDCOL[k];
+    if(fibA>0){const arm=fib===21?ARM21[k%21]:ARM34[k%34];c=c.map((v,i)=>Math.round(lerp(v,arm[i],fibA*(1-swap*.9))));}
+    ctx.globalAlpha=A;ctx.fillStyle=`rgb(${c[0]},${c[1]},${c[2]})`;
+    ctx.beginPath();ctx.arc(x,y,Math.max(.5,rad),0,6.283);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  RANGE=C0*Math.sqrt(NMAX)*zz;
+}
+/* 마지막 장면: 꽃잎 */
+function petals(t){
+  const a=E.out(seg(t,S.s6+.2,S.s6+2.2));if(a<=0)return;
+  const spin=(t-S.s6)*.035*2*Math.PI,R=C0*Math.sqrt(NMAX)*lerp(1,.93,E.io(seg(t,S.s6,S.s6+2)))*(1+.015*Math.sin((t-S.s6)*1.6));
+  const N=34;
+  for(let ring=0;ring<2;ring++)for(let i=0;i<N;i++){
+    const d=cl((a*1.25)-i/N*.25),ang=2*Math.PI*(i+ring*.5)/N+spin*.5-Math.PI/2;
+    const L=(ring?118:150)*E.back(d),wd=(ring?24:30);
+    if(L<=0)continue;
+    ctx.save();ctx.translate(FX+(R-8)*Math.cos(ang),FY+(R-8)*Math.sin(ang));ctx.rotate(ang);
+    const g=ctx.createLinearGradient(0,0,L,0);g.addColorStop(0,ring?'rgba(255,160,40,.85)':'rgba(255,190,60,.95)');g.addColorStop(1,ring?'rgba(255,120,30,.5)':'rgba(255,214,90,.75)');
+    ctx.fillStyle=g;ctx.globalAlpha=d*(ring?.8:1);
+    ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(L*.45,-wd,L,0);ctx.quadraticCurveTo(L*.45,wd,0,0);ctx.fill();ctx.restore();
+  }
+}
+
+/* ---------- UI ---------- */
+function progress(t){ctx.fillStyle='rgba(255,255,255,.08)';rr(80,136,920,6,3);ctx.fill();
+  const g=ctx.createLinearGradient(80,0,1000,0);g.addColorStop(0,BLUE);g.addColorStop(.5,VIO);g.addColorStop(1,GOLD);ctx.fillStyle=g;rr(80,136,920*t/DUR,6,3);ctx.fill();}
+function chip(t,tin,tout,s,col){const a=io(t,tin,tout);if(a<=0)return;const w=meas(s,30,700,0)+56;
+  ctx.save();ctx.globalAlpha=a;ctx.fillStyle='rgba(255,255,255,.08)';rr(80,196,w,62,31);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.14)';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
+  txt(s,108,238,30,700,col,'left',a,0);}
+function head(t,tin,tout,l1,l2){const a=io(t,tin,tout);if(a<=0)return;const d=(1-E.out(seg(t,tin,tin+.6)))*34;
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=24;rich(l1,80,350+d,a,'left');if(l2)rich(l2,80,432+d,a,'left');ctx.restore();}
+function caption(t,tin,tout,parts,sub){const a=io(t,tin,tout,.5,.35);if(a<=0)return;const d=(1-E.out(seg(t,tin,tin+.5)))*22;
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=26;rich(parts,540,1462+d,a);if(sub)txt(sub,540,1520+d,31,550,'#c7c7cc','center',a,-.01);ctx.restore();}
+/* 회전 각도 다이얼 */
+function fracLabel(th,t){
+  if(t<12.9)return t<9.6?['한 번에 얼마나 돌까?',SUB]:['?',SUB];
+  const near=(v,eps=.0004)=>Math.abs(th-v)<eps;
+  if(near(.5))return ['1/2 바퀴 · 180°',INK];
+  if(near(1/3))return ['1/3 바퀴 · 120°',INK];
+  if(near(.4))return ['2/5 바퀴 · 144°',INK];
+  if(near(INV_PI,.00002))return ['1/π 바퀴 · 114.6°',INK];
+  if(near(GOLDEN,.00002))return ['0.381966… 바퀴 · 137.5°',GOLD];
+  return [th.toFixed(4)+' 바퀴 · '+(th*360).toFixed(1)+'°',SUB];
+}
+function dial(t){
+  const a=io(t,5.6,S.s6-.3);if(a<=0)return;const th=turnAt(t);
+  const cx=150,cy=1610,R=50;
+  ctx.save();ctx.globalAlpha=a;
+  ctx.fillStyle='rgba(255,255,255,.06)';rr(80,1546,920,128,64);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,.14)';ctx.lineWidth=10;ctx.beginPath();ctx.arc(cx,cy,R-8,0,6.283);ctx.stroke();
+  const gold=Math.abs(th-GOLDEN)<.00002&&t>40;
+  ctx.strokeStyle=gold?GOLD:BLUE;ctx.lineCap='round';ctx.beginPath();ctx.arc(cx,cy,R-8,-Math.PI/2,-Math.PI/2+2*Math.PI*th);ctx.stroke();
+  ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+(R-8)*Math.cos(-Math.PI/2+2*Math.PI*th),cy+(R-8)*Math.sin(-Math.PI/2+2*Math.PI*th));ctx.stroke();
+  ctx.restore();
+  txt('씨앗마다 회전하는 각도',236,1596,26,600,SUB,'left',a,0);
+  const [s,c]=fracLabel(th,t);txt(s,236,1640,40,800,c,'left',a,-.02);
+}
+
+/* ---------- 수식 (DOM + KaTeX) ---------- */
+const ui=document.getElementById('ui');
+function el(html,style){const d=document.createElement('div');d.className='tx';d.innerHTML=html.replace(/\$([^$]+)\$/g,(_,m)=>katex.renderToString(m,{throwOnError:true}));Object.assign(d.style,style);ui.appendChild(d);return d;}
+const K={
+  cf:el('$\\varphi = 1+\\cfrac{1}{1+\\cfrac{1}{1+\\cfrac{1}{1+\\cdots}}}$',{top:'1188px',fontSize:'40px',color:'#ffd27a'}),
+  ang:el('$360^\\circ\\times\\left(1-\\dfrac{1}{\\varphi}\\right)\\approx 137.5^\\circ$',{top:'1336px',fontSize:'44px',color:'#f5f5f7'}),
+  pi:el('$\\dfrac{1}{\\pi}=0.31831\\ldots\\;\\approx\\;\\dfrac{7}{22}=0.31818\\ldots$',{top:'1290px',fontSize:'42px',color:'#f5f5f7'}),
+};
+function domVis(d,a,dy=0){d.style.opacity=a.toFixed(4);d.style.transform=`translateY(${dy.toFixed(1)}px)`;}
+
+/* ---------- 장면별 텍스트 ---------- */
+function hook(t){
+  const out=E.in(seg(t,4.3,4.8));if(out>=1)return;
+  const L=(parts,y,tin)=>{const i=E.out(seg(t,tin,tin+.6)),a=i*(1-out);if(a<=0)return;ctx.save();ctx.shadowColor='rgba(0,0,0,.85)';ctx.shadowBlur=30;
+    ctx.translate(0,(1-i)*40-out*24);rich(parts,540,y,a);ctx.restore();};
+  L([['씨앗 900개를',64,750,'#d8d8de']],300,.05);
+  L([['빈틈없이',96,850,GOLD],[' 놓는 법',96,850,INK]],420,.9);
+  L([['각도 하나',58,800,GOLD],['가 모든 걸 결정합니다',58,700,INK]],1530,2.4);
+}
+function fibBadge(t){
+  const a=io(t,46.4,52.3);if(a<=0)return;
+  const m=t<49.4?21:34,col=t<49.4?'#ff9f6b':'#c88cff';
+  const bump=Math.sin(Math.PI*seg(t,t<49.4?46.5:49.4,(t<49.4?46.5:49.4)+.45));
+  ctx.save();ctx.globalAlpha=a;ctx.translate(905,1265);ctx.scale(1+.18*bump,1+.18*bump);
+  ctx.fillStyle='rgba(10,10,16,.75)';ctx.beginPath();ctx.arc(0,0,92,0,6.283);ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=4;ctx.stroke();
+  txt(String(m),0,24,76,850,col,'center',1,-.03);txt('개의 나선',0,58,22,650,SUB,'center',1,0);ctx.restore();
+}
+function fibSeq(t){
+  const a=io(t,47.2,52.3);if(a<=0)return;
+  const seq=['1','1','2','3','5','8','13','21','34','55','89','…'];let x=540-seq.length*72/2+36;
+  seq.forEach((s,i)=>{const hl=(s==='21'&&t<49.4)||(s==='34'&&t>=49.4);
+    const ai=a*E.out(seg(t,47.2+i*.06,47.6+i*.06));txt(s,x+i*72,1520,hl?44:34,hl?850:650,hl?(s==='21'?'#ff9f6b':'#c88cff'):SUB,'center',ai,0);});
+}
+function ending(t){
+  const L=(parts,y,tin)=>{const i=E.out(seg(t,tin,tin+.7));if(i<=0)return;ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=30;ctx.translate(0,(1-i)*36);rich(parts,540,y,i);ctx.restore();};
+  L([['가장 ',62,750,INK],['분수답지 않은',62,850,GOLD],[' 수가',62,750,INK]],286,S.s6+.6);
+  L([['가장 ',62,750,INK],['빽빽한 꽃',62,850,GOLD],['을 만듭니다',62,750,INK]],370,S.s6+1.3);
+  const big=E.out(seg(t,S.s6+3,S.s6+3.8));
+  if(big>0){ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=36;ctx.translate(540,1560);ctx.scale(lerp(.85,1,E.back(big)),lerp(.85,1,E.back(big)));
+    const g=ctx.createLinearGradient(-250,0,250,0);g.addColorStop(0,'#fff3c4');g.addColorStop(.5,GOLD);g.addColorStop(1,OR);
+    ctx.globalAlpha=big;ctx.font='850 150px Pretendard';ctx.letterSpacing='-6px';ctx.textAlign='center';ctx.fillStyle=g;ctx.fillText('137.5°',0,0);ctx.restore();}
+  txt('씨앗 배치 모델(Vogel, 1979) · 실제 해바라기는 대체로 이 각도에 가깝습니다',540,1640,24,550,'#8e8e93','center',E.out(seg(t,S.s6+4.2,S.s6+5)),0);
+}
+
+window.renderFrame=t=>{
+  ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;
+  bg(t);
+  if(t>S.s6)petals(t);
+  flower(t);
+  hook(t);
+  chip(t,S.s1,S.s2-.4,'1 · 규칙',BLUE);
+  chip(t,S.s2,S.s3-.4,'2 · 딱 떨어지는 각도',RED);
+  chip(t,S.s3,S.s4-.4,'3 · 무리수라면?',VIO);
+  chip(t,S.s4,S.s5-.4,'4 · 탐색',BLUE);
+  chip(t,S.s5,S.s6-.4,'5 · 황금각',GOLD);
+  head(t,S.s1,S.s2-.4,[['돌고, 놓고,',68,800,INK]],[['조금 ',68,800,INK],['바깥으로',68,850,BLUE]]);
+  head(t,S.s2,S.s3-.4,[['딱 떨어지는 각도는',68,800,INK]],[['빈틈',68,850,RED],['을 만듭니다',68,800,INK]]);
+  head(t,S.s3,S.s4-.4,[['π',68,850,VIO],['라도 안심할 수',68,800,INK]],[['없습니다',68,800,INK]]);
+  head(t,S.s4,S.s5-.4,[['분수에서 ',68,800,INK],['가장 먼 수',68,850,BLUE],['를',68,800,INK]],[['찾아갑니다',68,800,INK]]);
+  head(t,S.s5,S.s6-.4,[['답은 ',68,800,INK],['황금비',68,850,GOLD],['에서',68,800,INK]],[['나온 각도',68,800,INK]]);
+  /* 자막 */
+  caption(t,5.7,9.3,[['한 번 돌 때마다 ',46,700,INK],['씨앗 하나',46,800,BLUE]],'매번 똑같은 각도만큼 돌고, 조금 더 바깥에 놓습니다');
+  caption(t,9.5,12.7,[['이 규칙 그대로 ',46,700,INK],['900개',46,800,BLUE]],'꽃의 모양은 오직 회전 각도 하나로 정해집니다');
+  caption(t,13.6,15.9,[['1/2 바퀴',46,800,RED],['씩 돌면 → 직선 ',46,700,INK],['2줄',46,800,RED]]);
+  caption(t,16.4,18.5,[['1/3 바퀴',46,800,RED],[' → ',46,700,INK],['3줄',46,800,RED]]);
+  caption(t,19.1,23.4,[['2/5 바퀴',46,800,RED],[' → ',46,700,INK],['5줄',46,800,RED]],'5개마다 정확히 2바퀴, 같은 자리로 돌아오니까');
+  caption(t,24.6,28.6,[['1/π 바퀴',46,800,VIO],['는 끝없이 이어지는 무리수지만',46,700,INK]]);
+  caption(t,28.8,32.8,[['7/22',46,800,VIO],['에 너무 가까워 ',46,700,INK],['22갈래',46,800,VIO],[' 빈틈',46,700,INK]],'분수와 거의 같으면 결국 분수처럼 행동합니다');
+  caption(t,33.3,37.2,[['각도를 돌려 보면',46,700,INK]],'분수에 가까워질 때마다 빈틈이 생깁니다');
+  caption(t,37.4,41.2,[['어떤 분수와도 ',46,700,INK],['가장 멀리',46,800,BLUE],[' 떨어진 곳',46,700,INK]]);
+  caption(t,42.2,45.8,[['연분수의 모든 자리가 ',44,700,INK],['1',44,850,GOLD]],'분수로 가장 근사하기 어려운 수 — 그래서 빈틈이 없습니다');
+  /* 수식 */
+  domVis(K.pi,io(t,25.2,32.8),(1-E.out(seg(t,25.2,25.8)))*20);
+  domVis(K.cf,io(t,41.9,45.9),(1-E.out(seg(t,41.9,42.5)))*20);
+  domVis(K.ang,0);
+  fibBadge(t);fibSeq(t);
+  caption(t,46.5,49.2,[['한 방향으로 세면 ',46,700,INK],['21',46,850,'#ff9f6b'],['개',46,700,INK]]);
+  caption(t,49.5,52.3,[['반대 방향은 ',46,700,INK],['34',46,850,'#c88cff'],['개 — 피보나치 수',46,700,INK]]);
+  if(t>S.s6)ending(t);
+  dial(t);progress(t);
+};
+window.ready=(async()=>{await Promise.all([500,550,600,650,700,750,800,850].map(w=>document.fonts.load(w+' 40px Pretendard','가A1%')));await document.fonts.ready;renderFrame(0);return true;})();
+</script>
+</body>
+</html>
