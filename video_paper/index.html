@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>종이를 42번 접으면</title>
+<style>
+@font-face{font-family:"Pretendard";font-weight:45 920;font-style:normal;
+  src:url("node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2") format("woff2-variations");}
+*{margin:0;padding:0}html,body{background:#000;overflow:hidden}
+canvas{display:block;width:1080px;height:1920px}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const W=1080,HH=1920,DUR=60;
+const cl=x=>Math.min(1,Math.max(0,x)),lerp=(a,b,s)=>a+(b-a)*s;
+const seg=(t,a,b)=>cl((t-a)/(b-a));
+const sm=(x,a,b)=>{const p=cl((x-a)/(b-a));return p*p*(3-2*p)};
+const E={out:x=>1-Math.pow(1-x,3),in:x=>x*x*x,io:x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,
+  back:x=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}};
+const hex=c=>c[0]==='#'?[1,3,5].map(i=>parseInt(c.slice(i,i+2),16)):c.match(/\d+/g).map(Number);
+const mix=(c1,c2,s)=>{const a=hex(c1),b=hex(c2);return 'rgb('+a.map((v,i)=>Math.round(lerp(v,b[i],s))).join(',')+')'};
+const rgba=(c,a)=>{const v=hex(c);return `rgba(${v[0]},${v[1]},${v[2]},${a.toFixed(4)})`};
+const INK='#f5f5f7',SUB='#a1a1a6',OR='#ff9f0a',PAPER='#f6f0e2',BLUE='#5ac8fa';
+function txt(s,x,y,size,weight,color,align='left',alpha=1,ls=-0.02){
+  if(alpha<=0.003)return 0;
+  ctx.save();ctx.globalAlpha*=alpha;ctx.font=`${weight} ${size}px Pretendard`;ctx.letterSpacing=(ls*size)+'px';
+  ctx.textAlign=align;ctx.textBaseline='alphabetic';ctx.fillStyle=color;ctx.fillText(s,x,y);const w=ctx.measureText(s).width;ctx.restore();return w;
+}
+function meas(s,size,weight,ls=-0.02){ctx.save();ctx.font=`${weight} ${size}px Pretendard`;ctx.letterSpacing=(ls*size)+'px';const w=ctx.measureText(s).width;ctx.restore();return w;}
+/* 색이 다른 조각들을 한 줄 가운데 정렬 */
+function rich(parts,cx,y,alpha=1){
+  const ws=parts.map(p=>meas(p[0],p[1],p[2]));let x=cx-ws.reduce((a,b)=>a+b,0)/2;
+  parts.forEach((p,i)=>{txt(p[0],x,y,p[1],p[2],p[3],'left',alpha);x+=ws[i];});
+}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);}
+
+/* ---------- 접기 타임라인 ---------- */
+const T0=4.6,D2=32/34,TEND=T0+8+32;          // 42번째 접기 완료 = 44.6초
+function nAt(t){
+  if(t<=T0)return 0;
+  let k,fr;
+  if(t<T0+8){k=Math.floor(t-T0);fr=t-T0-k;}
+  else{const x=(t-T0-8)/D2;if(x>=34)return 42;k=8+Math.floor(x);fr=x-Math.floor(x);}
+  return k+lerp(fr,E.io(fr),.7);
+}
+const thick=n=>1e-4*Math.pow(2,n);            // 두께(m), 종이 한 장 0.1 mm 가정
+function fmt(h){
+  const c=v=>v.toLocaleString('en-US',{maximumFractionDigits:0});
+  if(h<0.01)return (h*1000).toFixed(1)+' mm';
+  if(h<1)return (h*100).toFixed(1)+' cm';
+  if(h<100)return h.toFixed(1)+' m';
+  if(h<1000)return c(h)+' m';
+  if(h<1e5)return (h/1000).toFixed(1)+' km';
+  return c(h/1000)+' km';
+}
+/* ---------- 카메라 ---------- */
+const GY=1480,TY=650,SPAN=GY-TY,SX=540,S0=3e4;
+let s=S0,n=0,H=1e-4;
+const yOf=alt=>GY-alt*s;
+
+/* ---------- 별 ---------- */
+let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+const stars=[...Array(260)].map(()=>({x:rnd()*W,y:rnd()*HH,r:.6+rnd()*1.7,p:rnd()*6.28,f:.3+rnd()*1.2}));
+
+/* ---------- 그리기 ---------- */
+function background(t){
+  const wSky=sm(n,12.5,15.5)*(1-sm(n,25,29.5)),wSp=sm(n,26.5,30);
+  const top=mix(mix('#0b0c10','#07152e',wSky),'#020308',wSp),bot=mix(mix('#15171d','#234a7d',wSky),'#05070f',wSp);
+  const g=ctx.createLinearGradient(0,0,0,GY);g.addColorStop(0,top);g.addColorStop(1,bot);
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);
+  if(wSp>0){
+    const dr=(n-27)*14;
+    for(const st of stars){
+      const a=wSp*(.35+.65*Math.abs(Math.sin(st.p+t*st.f)));
+      ctx.fillStyle=`rgba(255,255,255,${(a*.9).toFixed(3)})`;
+      ctx.beginPath();ctx.arc(st.x,(st.y+dr*st.r)%HH,st.r,0,6.283);ctx.fill();
+    }
+  }
+}
+const RUL={'-3':'1 mm','-2':'1 cm','-1':'10 cm','0':'1 m','1':'10 m','2':'100 m','3':'1 km','4':'10 km','5':'100 km','6':'1,000 km','7':'1만 km','8':'10만 km'};
+function ruler(a0){
+  for(let e=-3;e<=8;e++){
+    const y=yOf(Math.pow(10,e));
+    const a=a0*sm(y,470,560)*sm(y,GY-28,GY-90);
+    if(a<=0.01)continue;
+    ctx.strokeStyle=`rgba(255,255,255,${(.13*a).toFixed(3)})`;ctx.lineWidth=2;ctx.setLineDash([4,10]);
+    ctx.beginPath();ctx.moveTo(60,y);ctx.lineTo(W-60,y);ctx.stroke();ctx.setLineDash([]);
+    txt(RUL[e],62,y-14,30,600,SUB,'left',a*.9,0);
+  }
+}
+/* 높이 hp(px)인 물체의 투명도: 탑이 가까워질 때 나타나고, 점처럼 작아지면 사라짐 */
+const objA=hp=>sm(hp,1180,960)*sm(hp,7,22);
+function objLabel(name,val,x,ytop,a,hp){
+  a*=sm(hp,60,130);if(a<=0.01)return;
+  txt(name,x,ytop-58,34,700,INK,'center',a);txt(val,x,ytop-20,28,600,SUB,'center',a,0);
+}
+function person(){
+  const hp=1.7*s,a=objA(hp);if(a<=0.01)return;const x=800,u=hp/1.7;
+  ctx.save();ctx.globalAlpha=a;ctx.fillStyle='#d9dee8';
+  ctx.beginPath();ctx.arc(x,GY-1.56*u,.13*u,0,6.283);ctx.fill();
+  rr(x-.23*u,GY-1.38*u,.46*u,.74*u,.16*u);ctx.fill();
+  rr(x-.2*u,GY-.78*u,.17*u,.78*u,.07*u);ctx.fill();rr(x+.03*u,GY-.78*u,.17*u,.78*u,.07*u);ctx.fill();
+  ctx.restore();objLabel('사람','1.7 m',x,GY-hp,a,hp);
+}
+function building(){
+  const hp=45*s,a=objA(hp);if(a<=0.01)return;const x=270,w=26*s;
+  ctx.save();ctx.globalAlpha=a;ctx.fillStyle='#2b3446';ctx.fillRect(x-w/2,GY-hp,w,hp);
+  if(hp>90){ctx.fillStyle='rgba(255,210,122,.75)';const cw=w/6,ch=hp/15;
+    for(let i=0;i<5;i++)for(let j=0;j<15;j++)if((i*7+j*3)%4)ctx.fillRect(x-w/2+cw*(i+.62),GY-hp+ch*(j+.3),cw*.5,ch*.42);}
+  ctx.restore();objLabel('15층 아파트','약 45 m',x,GY-hp,a,hp);
+}
+function tower(){
+  const hp=555*s,a=objA(hp);if(a<=0.01)return;const x=810,w=74*s;
+  ctx.save();ctx.globalAlpha=a;
+  const g=ctx.createLinearGradient(x-w/2,0,x+w/2,0);g.addColorStop(0,'#8fa6c6');g.addColorStop(.5,'#dbe6f5');g.addColorStop(1,'#6f86a8');
+  ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(x-w/2,GY);ctx.quadraticCurveTo(x-w*.42,GY-hp*.55,x-w*.04,GY-hp);
+  ctx.lineTo(x+w*.04,GY-hp);ctx.quadraticCurveTo(x+w*.42,GY-hp*.55,x+w/2,GY);ctx.closePath();ctx.fill();
+  ctx.restore();objLabel('롯데월드타워','555 m',x,GY-hp,a,hp);
+}
+const MT=[[-9.5,0],[-6.4,2.3],[-4.6,4.1],[-3.1,5.3],[-1.9,6.9],[-.8,7.9],[0,8.849],[.9,7.7],[1.8,6.6],[3.2,5.6],[4.6,3.8],[6.6,2.1],[9.8,0]];
+function everest(){
+  const hp=8849*s,a=objA(hp);if(a<=0.01)return;const x=300,u=s*1000;
+  ctx.save();ctx.globalAlpha=a;
+  const g=ctx.createLinearGradient(0,GY-hp,0,GY);g.addColorStop(0,'#5d6f8f');g.addColorStop(1,'#263247');
+  ctx.fillStyle=g;ctx.beginPath();MT.forEach((p,i)=>i?ctx.lineTo(x+p[0]*u,GY-p[1]*u):ctx.moveTo(x+p[0]*u,GY-p[1]*u));ctx.closePath();ctx.fill();
+  ctx.fillStyle='#eef3fb';ctx.beginPath();ctx.moveTo(x-1.9*u,GY-6.9*u);ctx.lineTo(x-.8*u,GY-7.9*u);ctx.lineTo(x,GY-8.849*u);ctx.lineTo(x+.9*u,GY-7.7*u);ctx.lineTo(x+1.8*u,GY-6.6*u);
+  ctx.lineTo(x+.9*u,GY-7.0*u);ctx.lineTo(x+.2*u,GY-6.5*u);ctx.lineTo(x-.6*u,GY-7.1*u);ctx.lineTo(x-1.2*u,GY-6.6*u);ctx.closePath();ctx.fill();
+  ctx.restore();objLabel('에베레스트','8,849 m',x,GY-hp,a,hp);
+}
+const CLOUDS=[[1800,840,2600],[4200,190,3400],[7000,900,3000]];
+function clouds(){
+  for(const [alt,x,wid] of CLOUDS){
+    const y=yOf(alt),wp=wid*s,a=sm(y,540,680)*sm(wp,16,50)*sm(wp,1500,750)*.5;if(a<=0.01)continue;
+    ctx.save();ctx.globalAlpha=a;ctx.fillStyle='rgba(255,255,255,.22)';
+    for(const [dx,dy,r] of [[-.3,.02,.2],[-.08,-.05,.27],[.17,-.01,.22],[.36,.04,.15]]){ctx.beginPath();ctx.ellipse(x+dx*wp,y+dy*wp,r*wp,r*wp*.42,0,0,6.283);ctx.fill();}
+    ctx.restore();
+  }
+}
+const MARKS=[[11e3,'여객기 순항 고도','약 11 km'],[100e3,'우주의 시작 (카르만 선)','100 km'],[400e3,'국제우주정거장','약 400 km'],[35786e3,'정지궤도 위성','35,786 km']];
+function marks(){
+  for(const [alt,name,val] of MARKS){
+    const y=yOf(alt),a=sm(y,470,570)*sm(y,GY-34,GY-110);if(a<=0.01)continue;
+    ctx.strokeStyle=rgba(BLUE,.55*a);ctx.lineWidth=2.5;ctx.setLineDash([14,10]);
+    ctx.beginPath();ctx.moveTo(SX+40,y);ctx.lineTo(W-60,y);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle=rgba(BLUE,a);ctx.beginPath();ctx.arc(SX+40,y,6,0,6.283);ctx.fill();
+    txt(name,W-62,y-48,32,700,INK,'right',a);txt(val,W-62,y-14,27,600,BLUE,'right',a,0);
+  }
+}
+const RE=6371e3,MOON=384400e3,RM=1737e3;
+function ground(){
+  const Rp=RE*s,wE=sm(n,30.5,36.5);
+  const col='#0d1015';
+  if(Rp>2e5){
+    ctx.fillStyle=col;ctx.fillRect(0,GY,W,HH-GY);
+    ctx.strokeStyle='rgba(255,255,255,.28)';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(0,GY);ctx.lineTo(W,GY);ctx.stroke();
+  }else{
+    const cy=GY+Rp,at=Math.max(100e3*s,2);
+    ctx.fillStyle='#05070f';if(Rp>HH)ctx.fillRect(0,GY+2,W,HH);
+    const gw=at*1.5+20,ga=.5*sm(n,29.5,33);
+    const gl=ctx.createRadialGradient(SX,cy,Rp,SX,cy,Rp+gw);gl.addColorStop(0,`rgba(110,180,255,${ga.toFixed(3)})`);gl.addColorStop(1,'rgba(110,180,255,0)');
+    ctx.fillStyle=gl;ctx.beginPath();ctx.arc(SX,cy,Rp+gw,0,6.283);ctx.fill();
+    const g=ctx.createRadialGradient(SX-Rp*.3,cy-Rp*.5,Rp*.1,SX,cy,Rp);g.addColorStop(0,mix('#0f1319','#6fb4ff',wE));g.addColorStop(1,mix('#0d1015','#1553b8',wE));
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(SX,cy,Rp,0,6.283);ctx.fill();
+  }
+}
+function stack(t){
+  const top=yOf(H),hp=H*s;
+  const wmin=lerp(12,5,sm(n,33,40)),wp=Math.min(420,Math.max(wmin,.21*s));
+  const fr=n-Math.floor(n),flash=n>0&&n<42?Math.pow(1-fr,3):0;
+  ctx.save();
+  ctx.shadowColor='rgba(255,236,190,.75)';ctx.shadowBlur=lerp(18,46,sm(n,9,18))+30*flash;
+  const g=ctx.createLinearGradient(SX-wp/2,0,SX+wp/2,0);g.addColorStop(0,'#e9dfc8');g.addColorStop(.5,'#fffaf0');g.addColorStop(1,'#e2d6bb');
+  ctx.fillStyle=g;rr(SX-wp/2,top,wp,Math.max(hp,3),Math.min(4,wp/2));ctx.fill();
+  ctx.restore();
+  const lp=1e-4*s,la=sm(lp,1.3,2.6)*.3;        // 종이 결(한 장 한 장)
+  if(la>0.01&&hp>5){ctx.strokeStyle=`rgba(120,96,50,${la.toFixed(3)})`;ctx.lineWidth=1;ctx.beginPath();
+    for(let y=GY-lp;y>top+1;y-=lp){ctx.moveTo(SX-wp/2+2,y);ctx.lineTo(SX+wp/2-2,y);}ctx.stroke();}
+  if(wp<40){ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=24;ctx.beginPath();ctx.arc(SX,top,wp/2+3+3*flash,0,6.283);ctx.fill();ctx.shadowBlur=0;}
+}
+function moon(t){
+  const y=yOf(MOON);const a=sm(y,440,560);if(a<=0.01)return;
+  const r=Math.max(RM*s,2.2);
+  ctx.save();ctx.globalAlpha=a;
+  const pul=t>TEND?(t-TEND)%1.6/1.6:0;
+  ctx.strokeStyle=`rgba(255,255,255,${(.55*(1-pul)).toFixed(3)})`;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(SX,y,r+14+50*pul,0,6.283);ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(SX,y,r+14,0,6.283);ctx.stroke();
+  ctx.fillStyle='#e9e6dc';ctx.shadowColor='#fff';ctx.shadowBlur=18;ctx.beginPath();ctx.arc(SX,y,r,0,6.283);ctx.fill();ctx.restore();
+  ctx.strokeStyle=`rgba(255,255,255,${(.4*a).toFixed(3)})`;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(SX+34,y);ctx.lineTo(SX+120,y);ctx.stroke();
+  txt('달',SX+138,y+2,54,800,INK,'left',a);txt('384,400 km',SX+138,y+44,30,600,SUB,'left',a,0);
+}
+function hud(t){
+  const a=E.out(seg(t,4.0,4.7))*(1-seg(t,49.3,49.9));if(a<=0)return;
+  const k=Math.min(42,Math.floor(n+.5));
+  const tk=k<=8?T0+k-.5:T0+8+(k-8-.5)*D2;
+  const bump=k>0?Math.sin(Math.PI*seg(t,tk,tk+.32)):0,big=t>TEND?1+.12*Math.sin(Math.PI*seg(t,TEND,TEND+.7)):1;
+  txt('접은 횟수',80,222,32,650,SUB,'left',a,0);
+  ctx.save();ctx.translate(80,400);ctx.scale((1+.07*bump)*big,(1+.07*bump)*big);
+  const w=txt(String(k),0,0,210,850,k===42?OR:INK,'left',a,-.05);txt('번',w+10,0,70,750,SUB,'left',a);ctx.restore();
+  txt('두께',1000,222,32,650,SUB,'right',a,0);
+  txt(fmt(thick(k)),1000,322,k>=40?76:86,800,OR,'right',a,-.03);
+  txt('종이 한 장 0.1 mm 기준',1000,376,26,550,SUB,'right',a*.8,0);
+}
+const CAPS=[[0,null,'종이 한 장, 두께 0.1 mm','접을 때마다 두께는 2배가 됩니다'],[2.4,null,'아직은 별일 없어 보입니다',null],
+  [6.85,'7번','공책 한 권 두께',null],[9.85,'10번','손바닥 너비',null],[13.85,'14번','사람 키를 넘고',null],[16.85,'17번','4층 건물 높이',null],
+  [19.85,'20번','축구장 길이만큼',null],[22.85,'23번','롯데월드타워를 넘습니다',null],[26.85,'27번','에베레스트보다 높이',null],
+  [29.85,'30번','여기부터 우주입니다',null],[31.85,'32번','국제우주정거장 높이',null],[35.85,'36번','지구 반지름보다 깁니다',null],
+  [38.85,'39번','정지궤도 위성 너머',null],[41.6,'42번','달을 지나쳤습니다','439,805 km  >  달까지 384,400 km']];
+function captions(t){
+  CAPS.forEach((c,i)=>{
+    const st=c[0],en=i<CAPS.length-1?Math.min(CAPS[i+1][0]-.3,st+2.75):99;
+    let a=sm(n,st,st+.3)*(1-sm(n,en,en+.25));if(i===0)a*=E.out(seg(t,4.2,4.9));
+    if(i===CAPS.length-1)a*=1-seg(t,49.3,49.8);
+    if(a<=0.01)return;const y=1640+(1-sm(n,st,st+.3))*24;
+    ctx.save();ctx.shadowColor='rgba(0,0,0,.85)';ctx.shadowBlur=22;
+    if(c[1])rich([[c[1],56,800,OR],['  '+c[2],54,750,INK]],540,y,a);else rich([[c[2],54,750,INK]],540,y,a);
+    if(c[3])txt(c[3],540,y+62,33,600,'#c7c7cc','center',a,0);ctx.restore();
+  });
+  txt('지구 · 달 · 거리 모두 실제 비율',540,1800,26,550,SUB,'center',.8*sm(n,41.5,42)*(1-seg(t,49.3,49.8)),0);
+}
+function hook(t){
+  const out=E.in(seg(t,3.75,4.25));if(out>=1)return;
+  const L=(str,parts,y,tin)=>{const i=E.out(seg(t,tin,tin+.55)),a=i*(1-out);if(a<=0)return;
+    ctx.save();ctx.translate(0,(1-i)*44-out*30);parts?rich(parts,540,y,a):txt(str,540,y,84,750,SUB,'center',a,-.04);ctx.restore();};
+  L('종이 한 장을',null,700,.25);
+  L(null,[['42번',190,850,OR],[' 접으면',96,800,INK]],900,1.0);
+  L(null,[['어디까지 닿을까요?',88,800,INK]],1070,2.0);
+  txt('두께 0.1 mm 기준',540,1180,34,550,SUB,'center',E.out(seg(t,2.7,3.2))*(1-out),0);
+}
+function outro(t){
+  const a0=sm(t,49.5,50.3);if(a0<=0)return;
+  ctx.fillStyle=`rgba(3,4,9,${(.9*a0).toFixed(3)})`;ctx.fillRect(0,0,W,HH);
+  const o1=1-E.in(seg(t,55.1,55.6));
+  const row=(tin,y,small,num,l1,l2)=>{const i=E.out(seg(t,tin,tin+.6)),a=i*o1;if(a<=0)return;ctx.save();ctx.translate(0,(1-i)*40);
+    txt(small,90,y,38,600,SUB,'left',a);const w=txt(num,90,y+178,190,850,OR,'left',a,-.05);txt('번',90+w+8,y+178,64,750,SUB,'left',a);
+    txt(l1,W-90,y+96,60,750,INK,'right',a);txt(l2,W-90,y+172,36,600,SUB,'right',a,0);ctx.restore();};
+  row(50.0,520,'여기서 9번만 더 접으면','51','태양을 지나고','2억 2,518만 km  >  1억 4,960만 km');
+  row(52.3,960,'그리고 103번이면','103','관측 가능한 우주','지름 약 930억 광년을 넘습니다');
+  const L=(parts,y,tin)=>{const i=E.out(seg(t,tin,tin+.6));if(i<=0)return;ctx.save();ctx.translate(0,(1-i)*40);rich(parts,540,y,i);ctx.restore();};
+  L([['두 배, 또 두 배.',96,800,INK]],820,55.8);
+  L([['이것이 ',70,750,INK],['지수적 증가',70,800,OR],['의 힘',70,750,INK]],960,56.7);
+  txt('실제로 종이를 접은 세계 기록은 12번입니다 (기네스, 2002년)',540,1130,30,550,SUB,'center',E.out(seg(t,57.6,58.2)),0);
+}
+function progress(t){
+  ctx.fillStyle='rgba(255,255,255,.08)';rr(80,136,920,6,3);ctx.fill();
+  const g=ctx.createLinearGradient(80,0,1000,0);g.addColorStop(0,BLUE);g.addColorStop(.5,'#bf8cff');g.addColorStop(1,OR);
+  ctx.fillStyle=g;rr(80,136,920*t/DUR,6,3);ctx.fill();
+}
+window.renderFrame=t=>{
+  n=nAt(t);H=thick(n);
+  s=Math.pow(Math.pow(S0,-4)+Math.pow(H/SPAN,4),-.25);       // 처음엔 고정, 이후 탑 꼭대기를 따라가는 카메라
+  ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;
+  background(t);
+  const sc=E.out(seg(t,3.9,4.7));
+  ctx.save();ctx.globalAlpha=sc;
+  ruler(1);clouds();everest();building();tower();person();
+  ground();stack(t);marks();moon(t);
+  ctx.restore();
+  hud(t);captions(t);hook(t);outro(t);progress(t);
+};
+window.ready=(async()=>{
+  await Promise.all([500,600,700,800,850].map(w=>document.fonts.load(w+' 40px Pretendard','가A1')));
+  await document.fonts.ready;renderFrame(0);return true;
+})();
+</script>
+</body>
+</html>
