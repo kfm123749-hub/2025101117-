@@ -1,0 +1,4 @@
+node_modules
+*.wav
+*_무음.mp4
+events.json
