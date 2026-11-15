@@ -1,56 +1,187 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>계산기</title>
+    <style>
+        body { font-family: system-ui, sans-serif; }
+        h1 { text-align: center; }
+        #calc { width: 220px; margin: 0 auto; }
+        .disp {
+            box-sizing: border-box;
+            width: 100%;
+            height: 40px;
+            margin-top: 3px;
+            font: 22pt ui-monospace, monospace;
+            text-align: right;
+        }
+        .keys {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            margin-top: 5px;
+        }
+        .keys input { min-height: 50px; font-size: 1rem; cursor: pointer; }
+        .error { min-height: 1.5em; margin: 6px 0 0; color: #a22127; font-size: 0.875rem; }
+    </style>
+    <script defer src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
 </head>
-<style>
-    h1 { text-align: center;}
-    .disp { width:205px; height: 40px; margin-top: 3px;}
-    .disp {font-family: "Oxanium", sans-serif; font-size: 22pt; text-align:right;}
-    input[type=button] {width: 50px; height: 50px; text-align: center;
-            vertical-align: middle; margin-top: 5px;}
-    #calc { width: 220px; margin-left: auto; margin-right: auto;}
-</style>
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script>
-    $(document).ready(function(){
-        $('.num').click(function(){
-            let cur=$('#disp2').val();
-            let n=$(this).val();
-            $('#disp2').val(cur+n);
-        });
-        $('.op').click(function(){
-            let cur = $('#disp2').val();
-            let opt = $(this).val();
-            $('#disp2').val(cur+opt);
-        });
-    });
-</script>
 <body>
-    <h1>계산기</h1>
-    <div id="calc">
-        <div>
-            <input type="text" class="disp" id="disp1" readonly>
-            <input type="text" class="disp" id="disp2" readonly>
-        </div>
-        <input type="button" class="num" value="7">
-        <input type="button" class="num" value="8">
-        <input type="button" class="num" value="9">
-        <input type="button" class="op" value="+"><br>
-        <input type="button" class="num" value="4">
-        <input type="button" class="num" value="5">
-        <input type="button" class="num" value="6">
-        <input type="button" class="op" value="-"><br>
-        <input type="button" class="num" value="1">
-        <input type="button" class="num" value="2">
-        <input type="button" class="num" value="3">
-        <input type="button" class="op" value="*"><br>
-        <input type="button" class="num" id="ac" value="AC">
-        <input type="button" class="num" value="0">
-        <input type="button" class="num" value="=">
-        <input type="button" class="op" value="/"><br>
-    </div>
+    <main>
+        <h1>계산기</h1>
+        <form id="calc">
+            <input type="text" class="disp" id="disp1" aria-label="계산 결과" aria-live="polite" readonly>
+            <input type="text" class="disp" id="disp2" name="expression" aria-label="입력 수식" readonly>
+
+            <div class="keys">
+                <input type="button" class="num" value="7">
+                <input type="button" class="num" value="8">
+                <input type="button" class="num" value="9">
+                <input type="button" class="op" value="+">
+                <input type="button" class="num" value="4">
+                <input type="button" class="num" value="5">
+                <input type="button" class="num" value="6">
+                <input type="button" class="op" value="-">
+                <input type="button" class="num" value="1">
+                <input type="button" class="num" value="2">
+                <input type="button" class="num" value="3">
+                <input type="button" class="op" value="*" aria-label="곱하기">
+                <input type="reset" id="ac" value="AC" aria-label="AC 초기화">
+                <input type="button" class="num" value="0">
+                <input type="submit" value="=" aria-label="= 계산">
+                <input type="button" class="op" value="/" aria-label="나누기">
+            </div>
+            <p id="calc-error" class="error" role="status"></p>
+        </form>
+    </main>
+    <script>
+(() => {
+    'use strict';
+
+    function calculateExpression(expression) {
+        const source = expression.replaceAll('×', '*').replaceAll('÷', '/').replaceAll('−', '-').trim();
+        if (!source) throw new Error('수식을 입력하세요.');
+        if (source.length > 160) throw new Error('수식은 160자까지 입력할 수 있습니다.');
+
+        let position = 0;
+
+        function peek() {
+            while (/\s/.test(source[position] ?? '')) position += 1;
+            return source[position];
+        }
+
+        function readFactor() {
+            const token = peek();
+
+            // 부호와 괄호를 먼저 처리합니다.
+            if (token === '+' || token === '-') {
+                position += 1;
+                const value = readFactor();
+                return token === '-' ? -value : value;
+            }
+
+            if (token === '(') {
+                position += 1;
+                const value = readSum();
+                if (peek() !== ')') throw new Error('닫는 괄호가 필요합니다.');
+                position += 1;
+                return value;
+            }
+
+            const number = source.slice(position).match(/^(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?/i);
+            if (!number) throw new Error('숫자와 연산자의 순서를 확인하세요.');
+            position += number[0].length;
+            return finite(Number(number[0]));
+        }
+
+        function finite(value) {
+            if (!Number.isFinite(value)) throw new Error('계산할 수 있는 숫자 범위를 벗어났습니다.');
+            return value;
+        }
+
+        function readProduct() {
+            let value = readFactor();
+            let operator = peek();
+
+            while (operator === '*' || operator === '/') {
+                position += 1;
+                const right = readFactor();
+                if (operator === '/' && right === 0) throw new Error('0으로 나눌 수 없습니다.');
+                value = finite(operator === '*' ? value * right : value / right);
+                operator = peek();
+            }
+
+            return value;
+        }
+
+        function readSum() {
+            let value = readProduct();
+            let operator = peek();
+
+            while (operator === '+' || operator === '-') {
+                position += 1;
+                const right = readProduct();
+                value = finite(operator === '+' ? value + right : value - right);
+                operator = peek();
+            }
+
+            return value;
+        }
+
+        const value = readSum();
+        if (peek() !== undefined) throw new Error('괄호와 연산자의 위치를 확인하세요.');
+        // 정수는 그대로 두고, 소수 표시에서 부동소수점 오차를 줄입니다.
+        return String(Number.isInteger(value) ? value : Number(value.toPrecision(15)));
+    }
+
+    window.calculateExpression = calculateExpression;
+})();
+
+document.addEventListener('DOMContentLoaded', () => {
+    (() => {
+        'use strict';
+
+        const form = document.querySelector('#calc');
+        const result = document.querySelector('#disp1');
+        const expression = document.querySelector('#disp2');
+        const error = document.querySelector('#calc-error');
+
+        function on(target, event, handler) {
+            // 수업의 jQuery 이벤트 방식으로 연결합니다. CDN이 차단되면 기본 DOM 이벤트를 사용합니다.
+            if (window.jQuery) window.jQuery(target).on(event, handler);
+            else target.addEventListener(event, handler);
+        }
+
+        for (const key of form.querySelectorAll('.num, .op')) {
+            on(key, 'click', () => {
+                if (result.value) {
+                    expression.value = key.matches('.op') ? result.value : '';
+                    result.value = '';
+                }
+                if (expression.value.length < 160) expression.value += key.value;
+                error.textContent = '';
+            });
+        }
+
+        on(form, 'submit', (event) => {
+            event.preventDefault();
+            error.textContent = '';
+
+            try {
+                result.value = window.calculateExpression(expression.value);
+            } catch (problem) {
+                result.value = '';
+                error.textContent = problem.message;
+            }
+        });
+
+        on(form, 'reset', () => {
+            error.textContent = '';
+        });
+    })();
+});
+    </script>
 </body>
 </html>
