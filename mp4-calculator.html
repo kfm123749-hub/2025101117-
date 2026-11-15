@@ -257,6 +257,7 @@
                     const offset = pattern.lastIndex;
                     const match = pattern.exec(input);
                     if (!match) throw new Error(`${offset + 1}번째 위치의 문자를 확인하세요.`);
+                    if (match[0] === 'E') throw new Error('지수 표기는 2.5E−3처럼 입력하세요.');
                     if (!/^\s/.test(match[0])) tokens.push(match[0].toLowerCase());
                 }
 
