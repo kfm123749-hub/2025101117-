@@ -3,296 +3,481 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>계산 노트</title>
+    <meta name="description" content="각도 모드, 삼각함수, 로그, 거듭제곱을 지원하는 공학용 계산기">
+    <title>공학용 계산기</title>
     <style>
-:root {
-    color-scheme: light;
-    font-family: "Atkinson Hyperlegible Next", "Malgun Gothic", system-ui, sans-serif;
-    color: #172435;
-    background: #eef1ef;
-}
+        :root {
+            color-scheme: light;
+            font-family: "Atkinson Hyperlegible Next", "Malgun Gothic", system-ui, sans-serif;
+            color: #182922;
+            background: #edf2ed;
+            font-synthesis: none;
+        }
 
-* { box-sizing: border-box; }
-body { margin: 0; }
+        * { box-sizing: border-box; }
+        body { min-width: 280px; margin: 0; }
 
-.workspace {
-    display: grid;
-    grid-template-columns: minmax(0, 360px) minmax(0, 300px);
-    gap: 16px;
-    width: min(100% - 32px, 676px);
-    margin: clamp(22px, 7vh, 78px) auto;
-    align-items: start;
-}
+        .workspace {
+            width: min(100% - 28px, 860px);
+            display: grid;
+            grid-template-columns: minmax(0, 530px) minmax(0, 310px);
+            gap: 16px;
+            align-items: start;
+            margin: clamp(14px, 5vh, 56px) auto;
+        }
 
-.calculator, .history {
-    min-width: 0;
-    border: 1px solid #d4dcd8;
-    border-radius: 18px;
-    background: #fff;
-    padding: 20px;
-}
+        .calculator, .history, .guide {
+            min-width: 0;
+            border: 1px solid #cad8cd;
+            border-radius: 15px;
+            background: #fff;
+            padding: clamp(12px, 2.8vw, 22px);
+        }
 
-h1, h2 { margin: 0 0 14px; }
-h1 { font-size: 1.55rem; }
-h2 { font-size: 1.05rem; }
+        .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+        h1, h2 { margin: 0; }
+        h1 { font-size: clamp(1.15rem, 4vw, 1.58rem); }
+        h2 { font-size: 1.06rem; }
+        .mode { display: flex; gap: 3px; margin: 0; border: 1px solid #d3ded5; border-radius: 8px; padding: 3px; }
+        .mode label { position: relative; cursor: pointer; }
+        .mode input, .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            overflow: hidden;
+            clip-path: inset(50%);
+            white-space: nowrap;
+        }
+        .mode span { display: block; border-radius: 5px; padding: 7px 8px; font: 700 0.76rem ui-monospace, monospace; }
+        .mode input:checked + span { background: #24513e; color: #fff; }
+        .mode input:focus-visible + span { outline: 2px solid #1c6653; outline-offset: 2px; }
 
-.display {
-    display: grid;
-    border-radius: 12px;
-    padding: 14px 16px;
-    background: #193330;
-    color: #f7fff8;
-}
+        .display { display: grid; gap: 4px; background: #17382d; color: #f4fff6; border-radius: 10px; padding: 12px 14px; }
+        .display label { color: #d5ecdb; font-size: 0.77rem; }
+        .display input, .display output { color: inherit; font-family: ui-monospace, "Cascadia Mono", monospace; text-align: right; }
+        .display input { min-width: 0; width: 100%; border: 0; background: transparent; font-size: 1.05rem; padding: 4px 0; }
+        .display input::placeholder { color: #b4d2c0; }
+        .result-row { display: flex; min-width: 0; justify-content: space-between; align-items: baseline; gap: 8px; }
+        .result-row > span { color: #a5c6b1; }
+        .display output { min-height: 1.3em; overflow-wrap: anywhere; font-size: clamp(1.24rem, 4.6vw, 2rem); font-weight: 700; }
+        .message { min-height: 1.4em; margin: 4px 0; color: #982f24; font-size: 0.83rem; }
 
-.display label { color: #c7ded5; font-size: 0.8rem; }
-.display input, .display output {
-    min-width: 0;
-    width: 100%;
-    padding: 3px 0;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    font-family: ui-monospace, monospace;
-    text-align: right;
-}
+        .keypad { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: clamp(4px, 0.9vw, 8px); }
+        button { cursor: pointer; font: inherit; }
+        .keypad button { min-height: 43px; border: 1px solid #d7e2d9; border-radius: 8px; background: #f8faf8; color: inherit; padding: 3px; font-weight: 690; }
+        .keypad .scientific { background: #edf4ef; color: #24513e; font-size: 0.87rem; }
+        .keypad .edit { background: #edf1ee; }
+        .keypad .operator { background: #d9eddf; color: #183f2d; font-size: 1.15rem; }
+        .keypad .clear { background: #fae9e1; color: #8a392d; }
+        .keypad .equals { grid-area: 6 / 5 / span 2 / span 2; background: #24513e; color: #fff; font-size: 1.8rem; }
+        .keypad button:hover, .history button:hover { box-shadow: inset 0 0 0 2px #628d75; }
+        :focus-visible { outline: 2px solid #2d755e; outline-offset: 2px; }
+        .display input:focus-visible { outline-color: #c4efd6; }
 
-.display input { font-size: 1rem; }
-.display input::placeholder { color: #bdcfc8; }
-.display output { min-height: 1.4em; overflow-wrap: anywhere; font-size: 1.85rem; font-weight: 700; }
-.message { min-height: 1.45em; margin: 5px 0; color: #a1262b; font-size: 0.84rem; }
+        .sidebar { display: grid; gap: 12px; min-width: 0; }
+        .history p { margin: 10px 0 0; color: #465c50; font-size: 0.86rem; }
+        .history ol { display: grid; gap: 7px; list-style: none; padding: 0; margin: 10px 0 0; }
+        .history ol:empty { margin: 0; }
+        .history button { display: grid; width: 100%; gap: 4px; border: 1px solid #dce7df; border-radius: 7px; padding: 8px 10px; background: #f6f9f6; color: inherit; text-align: left; }
+        .record-expression { overflow-wrap: anywhere; font: 0.84rem ui-monospace, monospace; }
+        .record-summary { display: flex; align-items: baseline; gap: 8px; color: #2a5140; }
+        .record-summary small { font: 0.72rem ui-monospace, monospace; }
+        .record-summary strong { overflow-wrap: anywhere; min-width: 0; }
+        .guide { font-size: 0.85rem; line-height: 1.55; }
+        .guide summary { cursor: pointer; font-weight: 700; }
+        .guide ul { margin: 10px 0 0; padding-left: 19px; }
+        .guide li + li { margin-top: 5px; }
+        .guide code { color: #235842; }
 
-.keypad { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
-button { font: inherit; cursor: pointer; }
-.keypad button {
-    min-height: 45px;
-    border: 1px solid #e2e8e5;
-    border-radius: 8px;
-    background: #f6f8f7;
-    color: inherit;
-    font-weight: 650;
-}
-
-.keypad .edit { background: #edf1f0; }
-.keypad .operator { background: #dcf0e6; color: #163c31; }
-.keypad .equals { background: #215e4a; color: #fff; }
-.keypad button:hover, .history button:hover { box-shadow: inset 0 0 0 2px #538978; }
-:focus-visible { outline: 2px solid #39766a; outline-offset: 2px; }
-.display input:focus-visible { outline-color: #b7ead7; }
-
-.history p { margin: 0; color: #4f5f66; font-size: 0.9rem; }
-.history ol { list-style: none; padding: 0; margin: 0; }
-.history li + li { margin-top: 7px; }
-.history button {
-    width: 100%;
-    border: 1px solid #e0e8e3;
-    border-radius: 8px;
-    padding: 9px 10px;
-    background: #f6f8f7;
-    color: inherit;
-    text-align: left;
-    overflow-wrap: anywhere;
-}
-
-@media (max-width: 610px) {
-    .workspace { grid-template-columns: minmax(0, 390px); justify-content: center; }
-}
+        @media (max-width: 680px) {
+            .workspace { grid-template-columns: minmax(0, 530px); justify-content: center; }
+        }
     </style>
 </head>
 <body>
     <main class="workspace">
-        <section class="calculator" aria-labelledby="page-title">
-            <h1 id="page-title">계산 노트</h1>
-            <form id="note-calculator">
+        <section class="calculator" aria-labelledby="title">
+            <form id="calculator">
+                <header class="top">
+                    <h1 id="title">공학용 계산기</h1>
+                    <fieldset class="mode">
+                        <legend class="visually-hidden">각도 단위</legend>
+                        <label><input type="radio" name="angle" value="DEG" checked><span>DEG</span></label>
+                        <label><input type="radio" name="angle" value="RAD"><span>RAD</span></label>
+                    </fieldset>
+                </header>
                 <div class="display">
                     <label for="expression">수식</label>
-                    <input id="expression" name="expression" type="text" maxlength="160" placeholder="(12 + 8) ÷ 4"
-                        autocomplete="off" spellcheck="false" aria-describedby="message">
-                    <output id="result" for="expression" aria-label="계산 결과">0</output>
+                    <input id="expression" name="expression" type="text" maxlength="240" placeholder="sin(30) + √(9)"
+                        autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="message">
+                    <div class="result-row">
+                        <span aria-hidden="true">=</span>
+                        <output id="result" for="expression" aria-label="계산 결과">0</output>
+                    </div>
                 </div>
-                <p id="message" class="message" role="status"></p>
-                <div class="keypad">
-                    <button type="reset" class="edit" aria-label="AC 초기화">AC</button>
-                    <button type="button" class="edit" data-key="(">(</button>
-                    <button type="button" class="edit" data-key=")">)</button>
-                    <button type="button" class="edit" data-action="backspace" aria-label="한 글자 지우기">⌫</button>
+                <p class="message" id="message" role="status"></p>
+
+                <div class="keypad" aria-label="계산기 키패드" role="group">
+                    <button type="button" class="scientific" data-function="sin" aria-label="사인 sin">sin</button>
+                    <button type="button" class="scientific" data-function="cos" aria-label="코사인 cos">cos</button>
+                    <button type="button" class="scientific" data-function="tan" aria-label="탄젠트 tan">tan</button>
+                    <button type="button" class="scientific" data-function="asin" aria-label="아크사인 asin">sin⁻¹</button>
+                    <button type="button" class="scientific" data-function="acos" aria-label="아크코사인 acos">cos⁻¹</button>
+                    <button type="button" class="scientific" data-function="atan" aria-label="아크탄젠트 atan">tan⁻¹</button>
+
+                    <button type="button" class="scientific" data-function="ln" aria-label="자연로그 ln">ln</button>
+                    <button type="button" class="scientific" data-function="log" aria-label="상용로그 log">log</button>
+                    <button type="button" class="scientific" data-function="√" aria-label="제곱근">√</button>
+                    <button type="button" class="scientific" data-function="∛" aria-label="세제곱근">∛</button>
+                    <button type="button" class="scientific" data-function="exp" aria-label="자연 지수 exp">eˣ</button>
+                    <button type="button" class="scientific" data-function="abs" aria-label="절댓값">|x|</button>
+
+                    <button type="button" class="scientific" data-key="^" aria-label="거듭제곱">xʸ</button>
+                    <button type="button" class="scientific" data-key="!" aria-label="팩토리얼">x!</button>
+                    <button type="button" class="scientific" data-key="%" aria-label="퍼센트">%</button>
+                    <button type="button" class="scientific" data-key="π" aria-label="원주율 파이">π</button>
+                    <button type="button" class="scientific" data-key="e" aria-label="자연상수 e">e</button>
+                    <button type="button" class="scientific" data-key="Ans" aria-label="직전 결과 Ans">Ans</button>
+
                     <button type="button" data-key="7">7</button>
                     <button type="button" data-key="8">8</button>
                     <button type="button" data-key="9">9</button>
                     <button type="button" class="operator" data-key="÷" aria-label="나누기">÷</button>
+                    <button type="button" class="clear" data-action="clear" aria-label="AC 초기화">AC</button>
+                    <button type="button" class="edit" data-action="backspace" aria-label="한 글자 지우기">⌫</button>
+
                     <button type="button" data-key="4">4</button>
                     <button type="button" data-key="5">5</button>
                     <button type="button" data-key="6">6</button>
                     <button type="button" class="operator" data-key="×" aria-label="곱하기">×</button>
+                    <button type="button" class="edit" data-key="(" aria-label="여는 괄호">(</button>
+                    <button type="button" class="edit" data-key=")" aria-label="닫는 괄호">)</button>
+
                     <button type="button" data-key="1">1</button>
                     <button type="button" data-key="2">2</button>
                     <button type="button" data-key="3">3</button>
                     <button type="button" class="operator" data-key="−" aria-label="빼기">−</button>
                     <button type="button" data-key="0">0</button>
-                    <button type="button" data-key=".">.</button>
-                    <button type="submit" class="equals" aria-label="= 계산">=</button>
+                    <button type="button" data-key="." aria-label="소수점">.</button>
+                    <button type="button" class="scientific" data-key="E" aria-label="지수 표기 EE" title="2.5E−3 = 0.0025">EE</button>
                     <button type="button" class="operator" data-key="+" aria-label="더하기">+</button>
+                    <button type="submit" class="equals" aria-label="= 계산">=</button>
                 </div>
             </form>
         </section>
 
-        <aside class="history" aria-labelledby="history-title">
-            <h2 id="history-title">계산 기록</h2>
-            <p id="empty-history">계산하면 이곳에 기록됩니다.</p>
-            <ol id="history"></ol>
+        <aside class="sidebar">
+            <section class="history" aria-labelledby="history-title">
+                <h2 id="history-title">계산 기록</h2>
+                <p id="empty-history">기록을 선택하면 수식과 각도 단위가 복원됩니다.</p>
+                <ol id="history"></ol>
+            </section>
+            <details class="guide">
+                <summary>입력 및 정밀도</summary>
+                <ul>
+                    <li>DEG는 도, RAD는 라디안입니다. 삼각함수 입력과 역삼각함수 결과에 적용됩니다.</li>
+                    <li><code>−2^2 = −4</code>, <code>2^3^2 = 512</code>, <code>25% = 0.25</code>입니다.</li>
+                    <li><code>2π</code>처럼 곱셈을 생략할 수 있습니다. <code>6÷2(1+2)</code>는 왼쪽부터 계산해 9입니다.</li>
+                    <li><code>EE</code>로 지수 표기를 입력합니다. <code>2.5E−3 = 0.0025</code>입니다.</li>
+                    <li>계산은 배정밀도로 수행하고 결과는 보통 유효숫자 15자리로 표시합니다. <code>Ans</code>는 표시 전 값을 사용합니다.</li>
+                    <li><code>AC</code>는 입력과 표시 결과를 지웁니다. 각도 단위, <code>Ans</code>와 기록은 유지됩니다.</li>
+                </ul>
+            </details>
         </aside>
     </main>
     <script>
-(() => {
-    'use strict';
+        (() => {
+            'use strict';
 
-    function calculateExpression(expression) {
-        const source = expression.replaceAll('×', '*').replaceAll('÷', '/').replaceAll('−', '-').trim();
-        if (!source) throw new Error('수식을 입력하세요.');
-        if (source.length > 160) throw new Error('수식은 160자까지 입력할 수 있습니다.');
+            const angleUnits = { DEG: 90, RAD: Math.PI / 2 };
+            const limits = { domain: '함수의 정의역을 확인하세요.', finite: '표현할 수 있는 숫자 범위를 벗어났습니다.' };
 
-        let position = 0;
-
-        function peek() {
-            while (/\s/.test(source[position] ?? '')) position += 1;
-            return source[position];
-        }
-
-        function readFactor() {
-            const token = peek();
-
-            // 부호와 괄호를 먼저 처리합니다.
-            if (token === '+' || token === '-') {
-                position += 1;
-                const value = readFactor();
-                return token === '-' ? -value : value;
-            }
-
-            if (token === '(') {
-                position += 1;
-                const value = readSum();
-                if (peek() !== ')') throw new Error('닫는 괄호가 필요합니다.');
-                position += 1;
+            function finite(value) {
+                if (!Number.isFinite(value)) throw new Error(limits.finite);
                 return value;
             }
 
-            const number = source.slice(position).match(/^(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?/i);
-            if (!number) throw new Error('숫자와 연산자의 순서를 확인하세요.');
-            position += number[0].length;
-            return finite(Number(number[0]));
-        }
-
-        function finite(value) {
-            if (!Number.isFinite(value)) throw new Error('계산할 수 있는 숫자 범위를 벗어났습니다.');
-            return value;
-        }
-
-        function readProduct() {
-            let value = readFactor();
-            let operator = peek();
-
-            while (operator === '*' || operator === '/') {
-                position += 1;
-                const right = readFactor();
-                if (operator === '/' && right === 0) throw new Error('0으로 나눌 수 없습니다.');
-                value = finite(operator === '*' ? value * right : value / right);
-                operator = peek();
+            function nonzeroResult(value, nonzeroExpected) {
+                if (value === 0 && nonzeroExpected) throw new Error(limits.finite);
+                return finite(value);
             }
 
-            return value;
-        }
+            function trig(name, value, mode) {
+                const quarterTurn = angleUnits[mode];
+                const angle = mode === 'DEG' ? value % 360 : value;
+                const turns = angle / quarterTurn;
+                const exactAxis = Number.isInteger(turns) && angle === turns * quarterTurn
+                    && (mode === 'DEG' || Math.abs(turns) <= 16);
 
-        function readSum() {
-            let value = readProduct();
-            let operator = peek();
+                if (exactAxis) {
+                    const axis = (turns % 4 + 4) % 4;
+                    if (name === 'sin') return [0, 1, 0, -1][axis];
+                    if (name === 'cos') return [1, 0, -1, 0][axis];
+                    if (axis % 2 === 1) throw new Error('이 각도에서는 tan을 정의할 수 없습니다.');
+                    return 0;
+                }
 
-            while (operator === '+' || operator === '-') {
-                position += 1;
-                const right = readProduct();
-                value = finite(operator === '+' ? value + right : value - right);
-                operator = peek();
+                // DEG에서는 가장 가까운 사분면 축을 기준으로 계산해 축 부근의 오차를 줄입니다.
+                if (mode === 'DEG') {
+                    const axis = Math.round(angle / 90);
+                    const offset = (angle - axis * 90) * (Math.PI / 180);
+                    const sine = Math.sin(offset);
+                    const cosine = Math.cos(offset);
+                    const quadrant = (axis % 4 + 4) % 4;
+                    const y = [sine, cosine, -sine, -cosine][quadrant];
+                    const x = [cosine, -sine, -cosine, sine][quadrant];
+                    if (name === 'sin') return y;
+                    if (name === 'cos') return x;
+                    return finite(y / x);
+                }
+
+                return Math[name](angle);
             }
 
-            return value;
-        }
+            function factorial(value) {
+                if (!Number.isInteger(value) || value < 0) throw new Error('팩토리얼에는 0 이상의 정수를 입력하세요.');
+                if (value > 170) throw new Error('팩토리얼은 170!까지 계산할 수 있습니다.');
+                // 정수 곱셈을 끝낸 뒤 한 번만 배정밀도로 변환합니다.
+                const lastFactor = BigInt(value);
+                let result = 1n;
+                for (let factor = 2n; factor <= lastFactor; factor += 1n) result *= factor;
+                return Number(result);
+            }
 
-        const value = readSum();
-        if (peek() !== undefined) throw new Error('괄호와 연산자의 위치를 확인하세요.');
-        // 정수는 그대로 두고, 소수 표시에서 부동소수점 오차를 줄입니다.
-        return String(Number.isInteger(value) ? value : Number(value.toPrecision(15)));
-    }
+            function calculateScientific(source, mode = 'DEG', answer = null) {
+                const input = source.trim().replace(/[×÷−]/g, (symbol) => ({ '×': '*', '÷': '/', '−': '-' })[symbol]);
+                if (!input) throw new Error('수식을 입력하세요.');
+                if (input.length > 240) throw new Error('수식은 240자까지 입력할 수 있습니다.');
+                if (mode !== 'DEG' && mode !== 'RAD') throw new Error('각도 단위를 선택하세요.');
 
-    window.calculateExpression = calculateExpression;
-})();
+                const pattern = /\s+|(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?|[a-z]+|[π√∛()+\-*/^!%]/giy;
+                const tokens = [];
+                while (pattern.lastIndex < input.length) {
+                    const offset = pattern.lastIndex;
+                    const match = pattern.exec(input);
+                    if (!match) throw new Error(`${offset + 1}번째 위치의 문자를 확인하세요.`);
+                    if (!/^\s/.test(match[0])) tokens.push(match[0].toLowerCase());
+                }
 
-(() => {
-    'use strict';
+                const constants = { 'π': Math.PI, pi: Math.PI, e: Math.E };
+                const functions = {
+                    sin: (x) => trig('sin', x, mode), cos: (x) => trig('cos', x, mode), tan: (x) => trig('tan', x, mode),
+                    asin: (x) => inverseTrig(Math.asin(x)), acos: (x) => inverseTrig(Math.acos(x)),
+                    atan: (x) => inverseTrig(Math.atan(x)),
+                    sqrt: Math.sqrt, '√': Math.sqrt, cbrt: Math.cbrt, '∛': Math.cbrt,
+                    ln: Math.log, log: Math.log10, exp: (x) => nonzeroResult(Math.exp(x), true), abs: Math.abs,
+                };
+                let position = 0;
 
-    const form = document.querySelector('#note-calculator');
-    const expression = document.querySelector('#expression');
-    const result = document.querySelector('#result');
-    const message = document.querySelector('#message');
-    const history = document.querySelector('#history');
-    const emptyHistory = document.querySelector('#empty-history');
+                function inverseTrig(radians) {
+                    return mode === 'DEG' ? radians * (180 / Math.PI) : radians;
+                }
 
-    function clearResult() {
-        result.value = '0';
-        message.textContent = '';
-    }
+                function take(token) {
+                    if (tokens[position] !== token) return false;
+                    position += 1;
+                    return true;
+                }
 
-    function addHistory(source, value) {
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = `${source} = ${value}`;
-        button.addEventListener('click', () => {
-            expression.value = source;
-            result.value = value;
-            message.textContent = '';
-            expression.focus();
-        });
-        item.append(button);
-        history.prepend(item);
-        if (history.children.length > 8) history.lastElementChild.remove();
-        emptyHistory.hidden = true;
-    }
+                function readGroup() {
+                    const value = readSum();
+                    if (!take(')')) throw new Error('닫는 괄호가 필요합니다.');
+                    return value;
+                }
 
-    form.addEventListener('submit', (event) => {
-        event.preventDefault();
-        const source = expression.value.trim();
+                function readPrimary() {
+                    if (take('(')) return readGroup();
+                    const token = tokens[position];
+                    position += 1;
+                    if (token && /^[\d.]/.test(token)) {
+                        const mantissa = token.split('e', 1)[0];
+                        return nonzeroResult(Number(token), /[1-9]/.test(mantissa));
+                    }
+                    if (Object.hasOwn(constants, token)) return constants[token];
+                    if (token === 'ans') {
+                        if (answer === null) throw new Error('Ans를 사용하려면 먼저 계산하세요.');
+                        return answer;
+                    }
+                    if (Object.hasOwn(functions, token)) {
+                        if (!take('(')) throw new Error(`${token} 뒤에 여는 괄호를 넣으세요.`);
+                        const result = functions[token](readGroup());
+                        if (Number.isNaN(result)) throw new Error(limits.domain);
+                        if ((token === 'ln' || token === 'log') && result === -Infinity) throw new Error(limits.domain);
+                        return finite(result);
+                    }
+                    if (token && /^[a-zπ√∛]/.test(token)) throw new Error(`지원하지 않는 이름입니다. ${token}`);
+                    throw new Error('숫자와 연산자의 순서를 확인하세요.');
+                }
 
-        try {
-            const value = window.calculateExpression(source);
-            result.value = value;
-            message.textContent = '';
-            addHistory(source, value);
-        } catch (problem) {
-            result.value = '—';
-            message.textContent = problem.message;
-        }
-    });
+                function readPower() {
+                    let base = readPrimary();
+                    if (take('!')) base = factorial(base);
+                    else if (take('%')) base = nonzeroResult(base / 100, base !== 0);
+                    if (tokens[position] === '!' || tokens[position] === '%') throw new Error('후위 연산을 반복하려면 괄호를 사용하세요.');
+                    if (!take('^')) return base;
 
-    form.addEventListener('reset', clearResult);
-    expression.addEventListener('input', clearResult);
-    expression.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') form.reset();
-    });
+                    // 지수는 오른쪽부터 묶고 음수 지수도 허용합니다.
+                    const exponent = readUnary();
+                    if (base === 0 && exponent <= 0) throw new Error('0의 0제곱과 음수제곱은 정의되지 않습니다.');
+                    const value = base ** exponent;
+                    if (Number.isNaN(value)) throw new Error('음수 밑은 정수 지수로 계산하세요.');
+                    return nonzeroResult(value, base !== 0);
+                }
 
-    form.querySelector('.keypad').addEventListener('click', (event) => {
-        const key = event.target.closest('button');
-        if (!key || key.type !== 'button') return;
+                function readUnary() {
+                    if (take('+')) return readUnary();
+                    if (take('-')) return -readUnary();
+                    return readPower();
+                }
 
-        const start = expression.selectionStart;
-        const end = expression.selectionEnd;
-        if (key.dataset.action === 'backspace') {
-            const deleteFrom = start === end ? Math.max(0, start - 1) : start;
-            expression.setRangeText('', deleteFrom, end, 'end');
-        } else if (expression.value.length - (end - start) < expression.maxLength) {
-            expression.setRangeText(key.dataset.key, start, end, 'end');
-        }
+                function readProduct() {
+                    let value = readUnary();
+                    while (position < tokens.length) {
+                        if (take('/')) {
+                            const divisor = readUnary();
+                            if (divisor === 0) throw new Error('0으로 나눌 수 없습니다.');
+                            value = nonzeroResult(value / divisor, value !== 0);
+                        } else if (take('*') || /^[a-zπ√∛(]/.test(tokens[position] ?? '')) {
+                            const factor = readUnary();
+                            value = nonzeroResult(value * factor, value !== 0 && factor !== 0);
+                        } else {
+                            break;
+                        }
+                    }
+                    return value;
+                }
 
-        clearResult();
-    });
-})();
+                function readSum() {
+                    let value = readProduct();
+                    while (position < tokens.length) {
+                        if (take('+')) value = finite(value + readProduct());
+                        else if (take('-')) value = finite(value - readProduct());
+                        else break;
+                    }
+                    return value;
+                }
+
+                const result = readSum();
+                if (position !== tokens.length) throw new Error('괄호와 연산자의 위치를 확인하세요.');
+                return result;
+            }
+
+            function formatScientific(value) {
+                const rounded = Number(value.toPrecision(15));
+                return String(Number.isFinite(rounded) ? rounded : value);
+            }
+
+            window.scientificCalculator = { evaluate: calculateScientific, format: formatScientific };
+        })();
+    </script>
+    <script>
+        (() => {
+            'use strict';
+
+            const form = document.querySelector('#calculator');
+            const expression = document.querySelector('#expression');
+            const result = document.querySelector('#result');
+            const message = document.querySelector('#message');
+            const history = document.querySelector('#history');
+            const emptyHistory = document.querySelector('#empty-history');
+            const modes = form.elements.angle;
+            const { evaluate, format } = window.scientificCalculator;
+            let answer = null;
+
+            function clearDisplay() {
+                result.value = '0';
+                message.textContent = '';
+            }
+
+            function clearInput() {
+                expression.value = '';
+                clearDisplay();
+            }
+
+            function addHistory(source, value, mode) {
+                const item = document.createElement('li');
+                const button = document.createElement('button');
+                const formula = document.createElement('span');
+                const summary = document.createElement('span');
+                const unit = document.createElement('small');
+                const number = document.createElement('strong');
+
+                button.type = 'button';
+                formula.className = 'record-expression';
+                formula.textContent = source;
+                summary.className = 'record-summary';
+                unit.textContent = mode;
+                number.textContent = `= ${format(value)}`;
+                summary.append(unit, number);
+                button.append(formula, summary);
+                button.addEventListener('click', () => {
+                    expression.value = source;
+                    modes.value = mode;
+                    answer = value;
+                    result.value = format(value);
+                    message.textContent = '';
+                    expression.focus();
+                });
+
+                item.append(button);
+                history.prepend(item);
+                if (history.children.length > 8) history.lastElementChild.remove();
+                emptyHistory.hidden = true;
+            }
+
+            form.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const source = expression.value.trim();
+
+                try {
+                    const value = evaluate(source, modes.value, answer);
+                    answer = value;
+                    result.value = format(value);
+                    message.textContent = '';
+                    addHistory(source, value, modes.value);
+                } catch (problem) {
+                    result.value = '—';
+                    message.textContent = problem.message;
+                }
+            });
+
+            form.addEventListener('change', (event) => {
+                if (event.target.name === 'angle') clearDisplay();
+            });
+            expression.addEventListener('input', clearDisplay);
+            expression.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') clearInput();
+            });
+
+            form.querySelector('.keypad').addEventListener('click', (event) => {
+                const button = event.target.closest('button');
+                if (!button || button.type !== 'button') return;
+                if (button.dataset.action === 'clear') {
+                    clearInput();
+                    return;
+                }
+
+                const start = expression.selectionStart;
+                const end = expression.selectionEnd;
+                if (button.dataset.action === 'backspace') {
+                    const deleteFrom = start === end ? Math.max(0, start - 1) : start;
+                    expression.setRangeText('', deleteFrom, end, 'end');
+                } else {
+                    let token = button.dataset.key;
+                    if (button.dataset.function) {
+                        const selection = expression.value.slice(start, end);
+                        token = selection ? `${button.dataset.function}(${selection})` : `${button.dataset.function}(`;
+                    }
+                    if (expression.value.length - (end - start) + token.length > expression.maxLength) {
+                        message.textContent = `수식은 ${expression.maxLength}자까지 입력할 수 있습니다.`;
+                        return;
+                    }
+                    expression.setRangeText(token, start, end, 'end');
+                }
+                clearDisplay();
+            });
+        })();
     </script>
 </body>
 </html>
