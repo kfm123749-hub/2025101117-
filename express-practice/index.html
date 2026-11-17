@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Express 실습</title>
+</head>
+<body>
+  <h1>Express 서버에서 보낸 HTML 페이지입니다</h1>
+  <p>이 페이지는 res.sendFile()로 index.html 파일을 읽어 응답한 결과입니다.</p>
+  <ul>
+    <li><a href="/users">GET /users</a> - 모든 사용자 조회</li>
+    <li><a href="/users/apple">GET /users/apple</a> - 특정 사용자 조회</li>
+    <li><a href="/json">GET /json</a> - res.json() 응답</li>
+  </ul>
+</body>
+</html>
