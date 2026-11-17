@@ -1,0 +1,12 @@
+{
+  "name": "server-practice",
+  "version": "1.0.0",
+  "description": "09. 서버 만들기 실습 (Node.js http 모듈)",
+  "main": "05-routing.js",
+  "scripts": {
+    "start": "node 05-routing.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
