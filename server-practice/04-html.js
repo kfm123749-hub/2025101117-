@@ -9,5 +9,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(3000, () => {
-  console.log("3000번 포트에서 서버 실행 중");
+  console.log("${PORT}번 포트에서 서버 실행 중");
 });
