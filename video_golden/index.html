@@ -52,6 +52,12 @@ const PHI=(1+Math.sqrt(5))/2, GOLDEN=1-1/PHI;            // 0.381966… 바퀴 =
 const INV_PI=1/Math.PI;
 const NMAX=900, FX=540, FY=940, C0=14;                   // 꽃 중심, √n 계수(px)
 const S={hook:0,s1:5,s2:13,s3:24,s4:33,s5:41.5,s6:52.5};
+const DUR2=43.5, HOOK2=3.0;
+// (새 시각, 기존 시각) — 3초 이후는 기존 장면을 구간별로 줄여 재생. π 구간 9초→5초, 마지막 정지 약 2초
+const KN=[[3.0,5.05],[9.0,13.0],[17.0,24.0],[22.0,33.0],[28.5,41.5],[37.5,52.5],[41.5,57.5],[43.5,59.5]];
+function N2O(u){if(u<=KN[0][0])return KN[0][1];for(let i=1;i<KN.length;i++)if(u<=KN[i][0]){const [a,va]=KN[i-1],[b,vb]=KN[i];return va+(vb-va)*(u-a)/(b-a);}return KN[KN.length-1][1];}
+const STAR=23/60;   // 138° = 23/60 바퀴 → 60갈래 별
+let OVR=null;      // 훅에서 꽃 상태를 직접 지정
 
 /* ---------- 타임라인: 회전 각도(바퀴 단위) ---------- */
 function turnAt(t){
@@ -74,8 +80,8 @@ function zoomAt(t){
 
 /* 수식이 나올 때 꽃을 위로 줄여 올림 */
 function layout(t){
-  const cy=kf(t,[[24.7,940],[25.4,890],[32.7,890],[33.4,940],[41.5,940],[42.1,850],[45.9,850],[46.6,915],[52.2,915],[52.9,940]]);
-  const sc=kf(t,[[24.7,1],[25.4,.84],[32.7,.84],[33.4,1],[41.5,1],[42.1,.74],[45.9,.74],[46.6,.9],[52.2,.9],[52.9,1]]);
+  const cy=kf(t,[[24.7,940],[25.4,890],[32.7,890],[33.4,940],[41.5,940],[42.1,850],[45.9,850],[46.6,870],[52.2,870],[52.9,940]]);
+  const sc=kf(t,[[24.7,1],[25.4,.84],[32.7,.84],[33.4,1],[41.5,1],[42.1,.74],[45.9,.74],[46.6,.86],[52.2,.86],[52.9,1]]);
   return [cy,sc];
 }
 /* ---------- 씨앗 스프라이트 (빛번짐) ---------- */
@@ -113,11 +119,11 @@ function bg(t){
 /* ---------- 꽃 ---------- */
 let RANGE=0;
 function flower(t){
-  const A=flowerAlpha(t);if(A<=0.003)return;
-  const th=turnAt(t),n=nAt(t),z=zoomAt(t),nf=Math.floor(n),fr=n-nf;
+  const A=OVR?OVR.A:flowerAlpha(t);if(A<=0.003)return;
+  const th=OVR?OVR.th:turnAt(t),n=OVR?NMAX:nAt(t),z=OVR?1:zoomAt(t),nf=Math.floor(n),fr=n-nf;
   const spin=t>S.s6?(t-S.s6)*.035:0;                       // 마지막 장면: 천천히 회전
   const breathe=t>S.s6?1+.015*Math.sin((t-S.s6)*1.6):1;
-  const [LY,LS]=layout(t);
+  const [LY,LS]=OVR?[OVR.cy,1]:layout(t);
   const zz=z*LS*breathe*(t>S.s6?lerp(1,.93,E.io(seg(t,S.s6,S.s6+2))):1);
   const fib=t>=46?(t<49.4?21:34):0;
   const fibA=t<46?0:(t<49.4?sm(t,46.4,47):(t<52.4?1:1-sm(t,52.2,53)));
@@ -183,8 +189,8 @@ function petals(t){
 }
 
 /* ---------- UI ---------- */
-function progress(t){ctx.fillStyle='rgba(255,255,255,.08)';rr(80,136,920,6,3);ctx.fill();
-  const g=ctx.createLinearGradient(80,0,1000,0);g.addColorStop(0,BLUE);g.addColorStop(.5,VIO);g.addColorStop(1,GOLD);ctx.fillStyle=g;rr(80,136,920*t/DUR,6,3);ctx.fill();}
+function progress(u){ctx.fillStyle='rgba(255,255,255,.08)';rr(80,136,920,6,3);ctx.fill();
+  const g=ctx.createLinearGradient(80,0,1000,0);g.addColorStop(0,BLUE);g.addColorStop(.5,VIO);g.addColorStop(1,GOLD);ctx.fillStyle=g;rr(80,136,920*Math.min(1,u/DUR2),6,3);ctx.fill();}
 function chip(t,tin,tout,s,col){const a=io(t,tin,tout);if(a<=0)return;const w=meas(s,30,700,0)+56;
   ctx.save();ctx.globalAlpha=a;ctx.fillStyle='rgba(255,255,255,.08)';rr(80,196,w,62,31);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.14)';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
   txt(s,108,238,30,700,col,'left',a,0);}
@@ -194,29 +200,22 @@ function caption(t,tin,tout,parts,sub){const a=io(t,tin,tout,.5,.35);if(a<=0)ret
   ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=26;rich(parts,540,1462+d,a);if(sub)txt(sub,540,1520+d,31,550,'#c7c7cc','center',a,-.01);ctx.restore();}
 /* 회전 각도 다이얼 */
 function fracLabel(th,t){
-  if(t<12.9)return t<9.6?['한 번에 얼마나 돌까?',SUB]:['?',SUB];
+  if(t<12.9)return t<9.6?['얼마나 돌까?',SUB]:['?',SUB];
   const near=(v,eps=.0004)=>Math.abs(th-v)<eps;
   if(near(.5))return ['1/2 바퀴 · 180°',INK];
   if(near(1/3))return ['1/3 바퀴 · 120°',INK];
   if(near(.4))return ['2/5 바퀴 · 144°',INK];
   if(near(INV_PI,.00002))return ['1/π 바퀴 · 114.6°',INK];
-  if(near(GOLDEN,.00002))return ['0.381966… 바퀴 · 137.5°',GOLD];
+  if(near(GOLDEN,.00002))return ['0.3820 바퀴 · 137.5°',GOLD];
   return [th.toFixed(4)+' 바퀴 · '+(th*360).toFixed(1)+'°',SUB];
 }
-function dial(t){
-  const a=io(t,5.6,S.s6-.3);if(a<=0)return;const th=turnAt(t);
-  const cx=150,cy=1610,R=50;
-  ctx.save();ctx.globalAlpha=a;
-  ctx.fillStyle='rgba(255,255,255,.06)';rr(80,1546,920,128,64);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=1.5;ctx.stroke();
-  ctx.strokeStyle='rgba(255,255,255,.14)';ctx.lineWidth=10;ctx.beginPath();ctx.arc(cx,cy,R-8,0,6.283);ctx.stroke();
-  const gold=Math.abs(th-GOLDEN)<.00002&&t>40;
-  ctx.strokeStyle=gold?GOLD:BLUE;ctx.lineCap='round';ctx.beginPath();ctx.arc(cx,cy,R-8,-Math.PI/2,-Math.PI/2+2*Math.PI*th);ctx.stroke();
-  ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+(R-8)*Math.cos(-Math.PI/2+2*Math.PI*th),cy+(R-8)*Math.sin(-Math.PI/2+2*Math.PI*th));ctx.stroke();
-  ctx.restore();
-  txt('씨앗마다 회전하는 각도',236,1596,26,600,SUB,'left',a,0);
-  const [s,c]=fracLabel(th,t);txt(s,236,1640,40,800,c,'left',a,-.02);
+function angleTop(t){
+  const a=io(t,5.6,S.s6-.3);if(a<=0)return;const th=turnAt(t),[str,c]=fracLabel(th,t);
+  const w=meas(str,32,800,-.02),cx=1000-w-40,cy=240;
+  ctx.save();ctx.globalAlpha=a;ctx.strokeStyle='rgba(255,255,255,.16)';ctx.lineWidth=6;ctx.beginPath();ctx.arc(cx,cy,20,0,6.283);ctx.stroke();
+  const gold=Math.abs(th-GOLDEN)<.00002&&t>40;ctx.strokeStyle=gold?GOLD:BLUE;ctx.lineCap='round';ctx.beginPath();ctx.arc(cx,cy,20,-Math.PI/2,-Math.PI/2+2*Math.PI*th);ctx.stroke();ctx.restore();
+  txt('씨앗마다 회전',1000,206,22,600,SUB,'right',a,0);txt(str,1000,252,32,800,c,'right',a,-.02);
 }
-
 /* ---------- 수식 (DOM + KaTeX) ---------- */
 const ui=document.getElementById('ui');
 function el(html,style){const d=document.createElement('div');d.className='tx';d.innerHTML=html.replace(/\$([^$]+)\$/g,(_,m)=>katex.renderToString(m,{throwOnError:true}));Object.assign(d.style,style);ui.appendChild(d);return d;}
@@ -240,7 +239,7 @@ function fibBadge(t){
   const a=io(t,46.4,52.3);if(a<=0)return;
   const m=t<49.4?21:34,col=t<49.4?'#ff9f6b':'#c88cff';
   const bump=Math.sin(Math.PI*seg(t,t<49.4?46.5:49.4,(t<49.4?46.5:49.4)+.45));
-  ctx.save();ctx.globalAlpha=a;ctx.translate(905,1265);ctx.scale(1+.18*bump,1+.18*bump);
+  ctx.save();ctx.globalAlpha=a;ctx.translate(165,1185);ctx.scale(1+.18*bump,1+.18*bump);
   ctx.fillStyle='rgba(10,10,16,.75)';ctx.beginPath();ctx.arc(0,0,92,0,6.283);ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=4;ctx.stroke();
   txt(String(m),0,24,76,850,col,'center',1,-.03);txt('개의 나선',0,58,22,650,SUB,'center',1,0);ctx.restore();
 }
@@ -248,7 +247,7 @@ function fibSeq(t){
   const a=io(t,47.2,52.3);if(a<=0)return;
   const seq=['1','1','2','3','5','8','13','21','34','55','89','…'];let x=540-seq.length*72/2+36;
   seq.forEach((s,i)=>{const hl=(s==='21'&&t<49.4)||(s==='34'&&t>=49.4);
-    const ai=a*E.out(seg(t,47.2+i*.06,47.6+i*.06));txt(s,x+i*72,1520,hl?44:34,hl?850:650,hl?(s==='21'?'#ff9f6b':'#c88cff'):SUB,'center',ai,0);});
+    const ai=a*E.out(seg(t,47.2+i*.06,47.6+i*.06));txt(s,x+i*72,1338,hl?46:36,hl?850:650,hl?(s==='21'?'#ff9f6b':'#c88cff'):SUB,'center',ai,0);});
 }
 function ending(t){
   const L=(parts,y,tin)=>{const i=E.out(seg(t,tin,tin+.7));if(i<=0)return;ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=30;ctx.translate(0,(1-i)*36);rich(parts,540,y,i);ctx.restore();};
@@ -258,15 +257,14 @@ function ending(t){
   if(big>0){ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=36;ctx.translate(540,1560);ctx.scale(lerp(.85,1,E.back(big)),lerp(.85,1,E.back(big)));
     const g=ctx.createLinearGradient(-250,0,250,0);g.addColorStop(0,'#fff3c4');g.addColorStop(.5,GOLD);g.addColorStop(1,OR);
     ctx.globalAlpha=big;ctx.font='850 150px Pretendard';ctx.letterSpacing='-6px';ctx.textAlign='center';ctx.fillStyle=g;ctx.fillText('137.5°',0,0);ctx.restore();}
-  txt('씨앗 배치 모델(Vogel, 1979) · 실제 해바라기는 대체로 이 각도에 가깝습니다',540,1640,24,550,'#8e8e93','center',E.out(seg(t,S.s6+4.2,S.s6+5)),0);
+  txt('씨앗 배치 모델(Vogel, 1979) · 실제 해바라기는 대체로 이 각도에 가깝습니다',540,1615,24,550,'#8e8e93','center',E.out(seg(t,S.s6+4.2,S.s6+5)),0);
 }
 
-window.renderFrame=t=>{
-  ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;
+function renderOld(t){
+  OVR=null;
   bg(t);
   if(t>S.s6)petals(t);
   flower(t);
-  hook(t);
   chip(t,S.s1,S.s2-.4,'1 · 규칙',BLUE);
   chip(t,S.s2,S.s3-.4,'2 · 딱 떨어지는 각도',RED);
   chip(t,S.s3,S.s4-.4,'3 · 무리수라면?',VIO);
@@ -278,14 +276,14 @@ window.renderFrame=t=>{
   head(t,S.s4,S.s5-.4,[['분수에서 ',68,800,INK],['가장 먼 수',68,850,BLUE],['를',68,800,INK]],[['찾아갑니다',68,800,INK]]);
   head(t,S.s5,S.s6-.4,[['답은 ',68,800,INK],['황금비',68,850,GOLD],['에서',68,800,INK]],[['나온 각도',68,800,INK]]);
   /* 자막 */
-  caption(t,5.7,9.3,[['한 번 돌 때마다 ',46,700,INK],['씨앗 하나',46,800,BLUE]],'매번 똑같은 각도만큼 돌고, 조금 더 바깥에 놓습니다');
-  caption(t,9.5,12.7,[['이 규칙 그대로 ',46,700,INK],['900개',46,800,BLUE]],'꽃의 모양은 오직 회전 각도 하나로 정해집니다');
+  caption(t,5.7,9.3,[['한 번 돌 때마다 ',46,700,INK],['씨앗 하나',46,800,BLUE]]);
+  caption(t,9.5,12.7,[['이 규칙 그대로 ',46,700,INK],['900개',46,800,BLUE]]);
   caption(t,13.6,15.9,[['1/2 바퀴',46,800,RED],['씩 돌면 → 직선 ',46,700,INK],['2줄',46,800,RED]]);
   caption(t,16.4,18.5,[['1/3 바퀴',46,800,RED],[' → ',46,700,INK],['3줄',46,800,RED]]);
-  caption(t,19.1,23.4,[['2/5 바퀴',46,800,RED],[' → ',46,700,INK],['5줄',46,800,RED]],'5개마다 정확히 2바퀴, 같은 자리로 돌아오니까');
+  caption(t,19.1,23.4,[['2/5 바퀴',46,800,RED],[' → ',46,700,INK],['5줄',46,800,RED]]);
   caption(t,24.6,28.6,[['1/π 바퀴',46,800,VIO],['는 끝없이 이어지는 무리수지만',46,700,INK]]);
-  caption(t,28.8,32.8,[['7/22',46,800,VIO],['에 너무 가까워 ',46,700,INK],['22갈래',46,800,VIO],[' 빈틈',46,700,INK]],'분수와 거의 같으면 결국 분수처럼 행동합니다');
-  caption(t,33.3,37.2,[['각도를 돌려 보면',46,700,INK]],'분수에 가까워질 때마다 빈틈이 생깁니다');
+  caption(t,28.8,32.8,[['7/22',46,800,VIO],['에 너무 가까워 ',46,700,INK],['22갈래',46,800,VIO],[' 빈틈',46,700,INK]]);
+  caption(t,33.3,37.2,[['각도를 돌려 보면',46,700,INK]]);
   caption(t,37.4,41.2,[['어떤 분수와도 ',46,700,INK],['가장 멀리',46,800,BLUE],[' 떨어진 곳',46,700,INK]]);
   caption(t,42.2,45.8,[['연분수의 모든 자리가 ',44,700,INK],['1',44,850,GOLD]],'분수로 가장 근사하기 어려운 수 — 그래서 빈틈이 없습니다');
   /* 수식 */
@@ -296,7 +294,34 @@ window.renderFrame=t=>{
   caption(t,46.5,49.2,[['한 방향으로 세면 ',46,700,INK],['21',46,850,'#ff9f6b'],['개',46,700,INK]]);
   caption(t,49.5,52.3,[['반대 방향은 ',46,700,INK],['34',46,850,'#c88cff'],['개 — 피보나치 수',46,700,INK]]);
   if(t>S.s6)ending(t);
-  dial(t);progress(t);
+  angleTop(t);
+}
+/* ---------- 새 훅 (0~3초): 완성된 해바라기가 0.5° 차이로 60갈래 별로 무너짐 ---------- */
+function newHook(u){
+  bg(u+5);
+  const th=kf(u,[[.3,GOLDEN],[.95,STAR]],E.io),A=1-sm(u,2.55,3.0);
+  OVR={th,A,cy:930};flower(u);OVR=null;
+  for(const k in K)domVis(K[k],0);
+  // 무너지는 순간의 충격파
+  const q=seg(u,.9,1.6);if(q>0&&q<1){ctx.strokeStyle=`rgba(255,90,79,${(.7*(1-q)).toFixed(3)})`;ctx.lineWidth=4;ctx.beginPath();ctx.arc(FX,930,200+260*E.out(q),0,6.283);ctx.stroke();}
+  // 처음부터 보이는 대비 문장
+  const ha=1-E.in(seg(u,2.1,2.45));
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.92)';ctx.shadowBlur=30;
+  rich([['각도 ',66,800,INK],['0.5°',72,850,GOLD],[' 차이로',66,800,INK]],540,330,ha);
+  rich([['이렇게 ',84,850,INK],['무너집니다',88,850,RED]],540,440,ha);
+  const qa=E.out(seg(u,2.3,2.7))*(1-E.in(seg(u,2.75,3.0)));
+  rich([['왜 하필 ',72,800,INK],['137.5°',80,850,GOLD],['일까요?',72,800,INK]],540,400,qa);
+  // 현재 각도 표시
+  const deg=th*360,fail=sm(u,.6,.95);
+  const col=`rgb(${Math.round(lerp(255,255,fail))},${Math.round(lerp(200,90,fail))},${Math.round(lerp(61,79,fail))})`;
+  txt(deg.toFixed(1)+'°',540,1490,96,850,col,'center',A*ha+qa*.0,-.03);
+  txt(fail<.5?'빈틈없이 꽉 찬 꽃':'60갈래로 갈라진 별',540,1552,34,700,fail<.5?'#ffd98a':'#ff9d94','center',A*ha,0);
+  ctx.restore();
+}
+window.renderFrame=u=>{
+  ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+  if(u<HOOK2)newHook(u);else renderOld(N2O(u));
+  progress(u);
 };
 window.ready=(async()=>{await Promise.all([500,550,600,650,700,750,800,850].map(w=>document.fonts.load(w+' 40px Pretendard','가A1%')));await document.fonts.ready;renderFrame(0);return true;})();
 </script>
