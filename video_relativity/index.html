@@ -103,43 +103,44 @@ const MAP={x:80,y:540,w:920,h:860};
 const ROADS=[];{let s2=7;const r2=()=>(s2=(s2*16807)%2147483647)/2147483647;
   for(let i=0;i<9;i++)ROADS.push({pts:[...Array(6)].map((_,k)=>[MAP.x-40+k*200+(r2()-.5)*60,MAP.y+60+i*100+(r2()-.5)*40]),w:i%3===0?7:3});
   for(let i=0;i<8;i++)ROADS.push({pts:[...Array(6)].map((_,k)=>[MAP.x+40+i*125+(r2()-.5)*50,MAP.y-40+k*190+(r2()-.5)*50]),w:i%3===1?7:3});}
-const P0=[250,1265],P1=[830,860],PXKM=Math.hypot(P1[0]-P0[0],P1[1]-P0[1])/11.54;
+const SAT=[215,805],PH=[640,1150],KMPX=20,DIRX=(PH[0]-SAT[0]),DIRY=(PH[1]-SAT[1]),R0=Math.hypot(DIRX,DIRY),UX=DIRX/R0,UY=DIRY/R0,TH=Math.atan2(DIRY,DIRX);
+function drawSat(x,y,s,a){ctx.save();ctx.globalAlpha=a;ctx.translate(x,y);ctx.rotate(-.5);ctx.fillStyle='#4d7bd6';ctx.fillRect(-46*s,-9*s,28*s,18*s);ctx.fillRect(18*s,-9*s,28*s,18*s);
+  ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1;ctx.strokeRect(-46*s,-9*s,28*s,18*s);ctx.strokeRect(18*s,-9*s,28*s,18*s);ctx.fillStyle='#e9eef6';ctx.fillRect(-15*s,-13*s,30*s,26*s);ctx.restore();}
 function hook(t){
   const A=1-E.in(seg(t,4.15,4.65));if(A<=0)return;
   const ap=E.out(seg(t,-.35,.3));
   ctx.save();ctx.globalAlpha=A*ap;ctx.translate(0,(1-ap)*30);
   rr(MAP.x,MAP.y,MAP.w,MAP.h,44);ctx.fillStyle='#0b1222';ctx.fill();ctx.save();ctx.clip();
-  // 강
   ctx.strokeStyle='rgba(60,120,220,.35)';ctx.lineWidth=70;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(MAP.x-40,MAP.y+300);ctx.bezierCurveTo(400,700,600,1150,MAP.x+MAP.w+40,1080);ctx.stroke();
-  // 도로
-  for(const r of ROADS){ctx.strokeStyle=r.w>4?'rgba(150,170,210,.30)':'rgba(150,170,210,.14)';ctx.lineWidth=r.w;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();
+  for(const r of ROADS){ctx.strokeStyle=r.w>4?'rgba(150,170,210,.26)':'rgba(150,170,210,.12)';ctx.lineWidth=r.w;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();
     r.pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();}
-  // 축척
-  ctx.strokeStyle='rgba(255,255,255,.6)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(870,1360);ctx.lineTo(870+PXKM,1360);ctx.moveTo(870,1352);ctx.lineTo(870,1368);ctx.moveTo(870+PXKM,1352);ctx.lineTo(870+PXKM,1368);ctx.stroke();
-  txt('1 km',870+PXKM/2,1345,22,700,'#c7c7cc','center',1,0);
-  // 실제 위치
-  const pu=(t*1.2)%1;ctx.strokeStyle=`rgba(90,200,250,${(.8*(1-pu)).toFixed(3)})`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(P0[0],P0[1],14+46*pu,0,6.283);ctx.stroke();
-  glowDot(P0[0],P0[1],16,'rgba(90,200,250,A)',1,3);ctx.fillStyle=SR;ctx.beginPath();ctx.arc(P0[0],P0[1],11,0,6.283);ctx.fill();
-  txt('실제 위치',P0[0],P0[1]+52,28,750,SR,'center',1,0);
-  // GPS가 계산한 위치
-  const e=11.54*E.io(seg(t,.5,3.5)),dx=(P1[0]-P0[0])/(11.54*PXKM),dy=(P1[1]-P0[1])/(11.54*PXKM);
-  const wob=Math.sin(e*1.3)*18,px=P0[0]+dx*e*PXKM-dy*wob,py=P0[1]+dy*e*PXKM+dx*wob;
-  if(e>.05){ctx.strokeStyle='rgba(255,90,79,.8)';ctx.lineWidth=3;ctx.setLineDash([10,10]);ctx.beginPath();ctx.moveTo(P0[0],P0[1]);ctx.lineTo(px,py);ctx.stroke();ctx.setLineDash([]);}
-  ctx.save();ctx.translate(px,py);const g=ctx.createLinearGradient(0,-70,0,0);g.addColorStop(0,'#ff8a80');g.addColorStop(1,'#e0302a');ctx.fillStyle=g;
-  ctx.beginPath();ctx.moveTo(0,0);ctx.bezierCurveTo(-30,-34,-30,-74,0,-74);ctx.bezierCurveTo(30,-74,30,-34,0,0);ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,-50,10,0,6.283);ctx.fill();ctx.restore();
-  txt('GPS가 계산한 위치',px,py-90,28,750,'#ff9d94','center',1,0);
+  // 축척 5 km
+  ctx.strokeStyle='rgba(255,255,255,.6)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(860,1362);ctx.lineTo(860+5*KMPX,1362);ctx.moveTo(860,1354);ctx.lineTo(860,1370);ctx.moveTo(860+5*KMPX,1354);ctx.lineTo(860+5*KMPX,1370);ctx.stroke();
+  txt('5 km',860+2.5*KMPX,1346,22,700,'#c7c7cc','center',1,0);
+  const dayP=E.io(seg(t,.5,3.5)),e=11.54*dayP,R=R0+e*KMPX;   // 오차는 경과 시간에 정비례
+  // 실제 거리(파랑)와 시계 오차로 계산된 거리(빨강)
+  ctx.strokeStyle='rgba(90,200,250,.5)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(SAT[0],SAT[1],R0,TH-.42,TH+.42);ctx.stroke();
+  ctx.setLineDash([12,10]);ctx.strokeStyle='rgba(90,200,250,.75)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(SAT[0],SAT[1]);ctx.lineTo(PH[0],PH[1]);ctx.stroke();ctx.setLineDash([]);
+  for(let k=0;k<3;k++){const q=((t*.9)+k/3)%1;ctx.fillStyle=`rgba(255,241,168,${(.9*(1-q*.6)).toFixed(3)})`;ctx.beginPath();ctx.arc(lerp(SAT[0],PH[0],q),lerp(SAT[1],PH[1],q),5,0,6.283);ctx.fill();}
+  if(e>.05){ctx.strokeStyle='rgba(255,90,79,.9)';ctx.lineWidth=4;ctx.beginPath();ctx.arc(SAT[0],SAT[1],R,TH-.36,TH+.36);ctx.stroke();
+    const qx=SAT[0]+UX*R,qy=SAT[1]+UY*R;ctx.strokeStyle='rgba(255,90,79,.9)';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(PH[0],PH[1]);ctx.lineTo(qx,qy);ctx.stroke();
+    ctx.fillStyle='#ff5a4f';ctx.beginPath();ctx.arc(qx,qy,9,0,6.283);ctx.fill();
+    const mx=(PH[0]+qx)/2+UY*70,my=(PH[1]+qy)/2-UX*70;ctx.fillStyle='rgba(24,8,8,.9)';rr(mx-92,my-30,184,56,28);ctx.fill();ctx.strokeStyle='rgba(255,138,128,.7)';ctx.lineWidth=2;ctx.stroke();
+    txt('+'+e.toFixed(1)+' km',mx,my+10,30,850,'#ff9d94','center',1,0);}
+  drawSat(SAT[0],SAT[1],1.2,1);txt('GPS 위성',SAT[0]+10,SAT[1]-46,26,750,'#c7d6f2','center',1,0);
+  const pu=(t*1.2)%1;ctx.strokeStyle=`rgba(90,200,250,${(.8*(1-pu)).toFixed(3)})`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(PH[0],PH[1],14+40*pu,0,6.283);ctx.stroke();
+  ctx.fillStyle=SR;ctx.beginPath();ctx.arc(PH[0],PH[1],12,0,6.283);ctx.fill();
+  txt('내 휴대폰',PH[0]-34,PH[1]+44,28,750,SR,'right',1,0);
+  txt('계산된 거리',SAT[0]+UX*(R0+11.54*KMPX)-20,SAT[1]+UY*(R0+11.54*KMPX)+44,26,750,'#ff9d94','right',E.out(seg(t,1.2,1.6)),0);
   ctx.restore();
-  // HUD
-  const hrs=Math.floor(24*seg(t,.5,3.5)+1e-6);
   ctx.fillStyle='rgba(5,8,16,.78)';rr(MAP.x+24,MAP.y+24,MAP.w-48,118,30);ctx.fill();
-  txt('경과 시간',MAP.x+60,MAP.y+70,26,650,SUB,'left',1,0);txt(hrs+'시간',MAP.x+60,MAP.y+122,48,850,INK,'left',1,-.03);
-  txt('위치 오차',MAP.x+MAP.w-60,MAP.y+70,26,650,SUB,'right',1,0);txt(e.toFixed(1)+' km',MAP.x+MAP.w-60,MAP.y+122,48,850,'#ff8a80','right',1,-.03);
+  txt('경과 시간',MAP.x+60,MAP.y+70,26,650,SUB,'left',1,0);txt(Math.floor(24*dayP+1e-6)+'시간',MAP.x+60,MAP.y+122,48,850,INK,'left',1,-.03);
+  txt('위성까지 거리 오차',MAP.x+MAP.w-60,MAP.y+70,26,650,SUB,'right',1,0);txt(e.toFixed(1)+' km',MAP.x+MAP.w-60,MAP.y+122,48,850,'#ff8a80','right',1,-.03);
   ctx.restore();
-  // 제목
   const h1=E.out(seg(t,-.3,.25)),h2=E.out(seg(t,.25,.75));
   ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=24;
-  rich([['상대성 이론을 빼면',64,800,INK]],80,352+(1-h1)*28,h1*A,'left');
-  rich([['GPS가 하루 ',60,800,INK],['11km',64,850,'#ff8a80'],[' 넘게 틀어집니다',60,800,INK]],80,436+(1-h2)*28,h2*A,'left');ctx.restore();
+  rich([['상대성 이론을 빼면 GPS는',62,800,INK]],80,352+(1-h1)*28,h1*A,'left');
+  rich([['위성 거리를 하루 ',58,800,INK],['11km',62,850,'#ff8a80'],['씩 잘못 잽니다',58,800,INK]],80,436+(1-h2)*28,h2*A,'left');ctx.restore();
   const wa=io(t,3.55,4.4,.3,.25);if(wa>0){ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=30;ctx.translate(540,1540);const sc=lerp(.85,1,E.back(seg(t,3.55,3.95)));ctx.scale(sc,sc);txt('왜 그럴까요?',0,0,66,850,INK,'center',wa,-.03);ctx.restore();}
 }
 /* ---------- 1. 두 이론 소개 ---------- */
@@ -148,8 +149,8 @@ function title(t){
   const out=1-E.in(seg(t,7.65,8.05));
   head(t,S.title+.05,7.75,[['시간은 누구에게나',64,800,INK]],[['똑같이 흐르지 ',64,800,INK],['않습니다',66,850,GOLD]]);
   const a1=E.out(seg(t,5.0,5.55))*out,a2=E.out(seg(t,5.6,6.15))*out;
-  theoryCard(80,580,920,330,SR,iconLightClock,'1905년','특수 상대성 이론','빠르게 움직이면 → 시간이 느려진다',a1,-(1-a1)*120,t);
-  theoryCard(80,950,920,330,GR,iconWell,'1915년','일반 상대성 이론','중력이 강하면 → 시간이 느려진다',a2,(1-a2)*120,t);
+  theoryCard(80,580,920,330,SR,iconLightClock,'1905년','특수 상대성 이론','움직이는 시계는 → 느리게 간다',a1,-(1-a1)*120,t);
+  theoryCard(80,950,920,330,GR,iconWell,'1915년','일반 상대성 이론','무거운 천체 가까이선 → 시계가 느려진다',a2,(1-a2)*120,t);
   caption(t,6.4,7.7,[['아인슈타인의 두 이론, ',46,700,INK],['60초',48,850,GOLD],['에 정리합니다',46,700,INK]]);
 }
 /* =========================================================
@@ -196,7 +197,7 @@ function cScene(t){
     ctx.save();ctx.globalAlpha=A*p;ctx.fillStyle='rgba(12,18,30,.88)';rr(x-220,1290,440,120,34);ctx.fill();ctx.strokeStyle='rgba(255,241,168,.45)';ctx.lineWidth=2;ctx.stroke();ctx.restore();
     txt(s,x,1335,26,650,SUB,'center',A*p,0);txt('c',x,1394,52,850,LIGHT,'center',A*p,0);});
   caption(t,8.5,10.9,[['우주선이 빛 속도의 ',44,700,INK],['절반',46,850,SR],['으로 날며 빛을 쏴도',44,700,INK]]);
-  caption(t,11.1,12.75,[['누가 재든 ',46,700,INK],['똑같이 c',48,850,LIGHT]],'초속 299,792,458 m — 특수 상대성 이론의 출발점');
+  caption(t,11.1,12.75,[['누가 재든 ',46,700,INK],['똑같이 c',48,850,LIGHT]],'진공에서 초속 299,792,458 m — 특수 상대성 이론의 출발점');
 }
 function stick(x,feet,h,col,armTo){
   ctx.save();ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=h*.055;ctx.lineCap='round';ctx.lineJoin='round';
@@ -214,7 +215,7 @@ const botX=t=>t<LC.run0?120:t<LC.run1?120+280*(t-LC.run0):960;
 function bounceY(t,t0,tau,y0,y1){const u=Math.max(0,(t-t0)/tau),k=Math.floor(u),f=u-k;return k%2===0?y1-(y1-y0)*f:y0+(y1-y0)*f;}
 const topY=t=>{const tt=Math.min(t,LC.run1);return tt<LC.ph0?TY1:bounceY(tt,LC.ph0,LC.tau0,TY0,TY1);};
 const botY=t=>{const tt=Math.min(t,LC.run1);return tt<LC.ph0?BY1:tt<LC.run0?bounceY(tt,LC.ph0,LC.tau0,BY0,BY1):bounceY(tt,LC.run0,LC.tau1,BY0,BY1);};
-function mirror(x,y,a,flash){ctx.save();ctx.globalAlpha=a;ctx.shadowColor='rgba(150,220,255,.9)';ctx.shadowBlur=14+30*flash;ctx.fillStyle=flash>0?`rgb(${Math.round(lerp(190,255,flash))},${Math.round(lerp(225,255,flash))},255)`:'#bfe3ff';rr(x-78,y-6,156,12,6);ctx.fill();ctx.restore();}
+function mirror(x,y,a,flash,wf=1){ctx.save();ctx.globalAlpha=a;ctx.shadowColor='rgba(150,220,255,.9)';ctx.shadowBlur=14+30*flash;ctx.fillStyle=flash>0?`rgb(${Math.round(lerp(190,255,flash))},${Math.round(lerp(225,255,flash))},255)`:'#bfe3ff';rr(x-78*wf,y-6,156*wf,12,6);ctx.fill();ctx.restore();}
 function clockScene(t){
   if(t<12.9||t>23.3)return;const A=io(t,13.0,22.85,.4,.35);
   head(t,13.05,22.8,[['그래서 움직이는 시계는',64,800,INK]],[['느리게',68,850,SR],[' 갑니다',66,800,INK]]);
@@ -232,13 +233,13 @@ function clockScene(t){
     txt(t<LC.run0?'–':n+'번',990,746,72,850,t>=LC.run1?GOLD:INK,'right',tA*E.out(seg(t,14.5,14.9)),-.03);
   }
   // ---- 아래: 움직이는 시계 ----
-  const bx=botX(t),yb=botY(t);
-  ctx.save();ctx.globalAlpha=A*.3;ctx.strokeStyle='#bfe3ff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(bx-78,BY0);ctx.lineTo(bx-78,BY1);ctx.moveTo(bx+78,BY0);ctx.lineTo(bx+78,BY1);ctx.stroke();ctx.restore();
+  const bx=botX(t),yb=botY(t),cw=t<LC.run0?1:lerp(1,.8,E.out(seg(t,LC.run0,LC.run0+.15)));
+  ctx.save();ctx.globalAlpha=A*.3;ctx.strokeStyle='#bfe3ff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(bx-78*cw,BY0);ctx.lineTo(bx-78*cw,BY1);ctx.moveTo(bx+78*cw,BY0);ctx.lineTo(bx+78*cw,BY1);ctx.stroke();ctx.restore();
   const flb=Math.max(0,1-(t-lastBefore(EV.botHits,t))/.25);
   // 지그재그 궤적
   if(t>LC.run0){ctx.save();ctx.globalAlpha=A;ctx.globalCompositeOperation='lighter';ctx.strokeStyle='rgba(255,241,168,.75)';ctx.lineWidth=4;ctx.lineJoin='round';ctx.shadowColor='rgba(255,230,140,.9)';ctx.shadowBlur=16;ctx.beginPath();
     for(let s=LC.run0;s<=Math.min(t,LC.run1)+1e-9;s+=1/120){const x=botX(s),y=botY(s);s===LC.run0?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.lineTo(bx,yb);ctx.stroke();ctx.restore();}
-  mirror(bx,BY0,A,yb<BY0+40?flb:0);mirror(bx,BY1,A,yb>BY1-40?flb:0);
+  mirror(bx,BY0,A,yb<BY0+40?flb:0,cw);mirror(bx,BY1,A,yb>BY1-40?flb:0,cw);
   // 삼각형 분석
   const ta=io(t,17.9,22.85,.3,.35);
   if(ta>0){const Ax=330,Ay=BY0,Cx=330,Cy=BY1,Bx=540,By=BY1;
@@ -310,7 +311,7 @@ function gammaScene(t){
     dial(300,790,74,tickAngle(EV.earthTicks,t),GREEN,ca,fE);dial(530,790,74,tickAngle(EV.shipTicks,t),SR,ca,fS);
     txt('지구 시계',300,900,28,750,INK,'center',ca,0);txt('우주선 시계',530,900,28,750,SR,'center',ca,0);
     txt('시간 흐름 '+Math.round(100/TL.gamma(Math.min(.995,bt)))+'%',530,936,26,700,'#c7c7cc','center',ca*E.out(seg(t,23.7,24)),0);}
-  caption(t,23.3,27.5,[['속도를 높일수록 ',46,700,INK],['곡선이 치솟습니다',48,850,SR]],'빛 속도의 99%면 시간이 약 7배 느리게 흐릅니다');
+  caption(t,23.3,27.5,[['속도를 높일수록 ',46,700,INK],['곡선이 치솟습니다',48,850,SR]],'빛 속도의 99%면, 지구에서 볼 때 우주선 시계가 약 7배 느리게 갑니다');
   caption(t,27.7,29.7,[['일상 속도에선 ',46,700,INK],['너무 작아 못 느낄 뿐',48,850,SR]],'시속 1,000km로 1시간 날아도 약 1.5나노초 (특수 상대성 효과만)');
 }
 /* =========================================================
@@ -344,7 +345,7 @@ function eqScene(t){
     ctx.restore();});
   const eqp=E.back(seg(t,32.55,32.95));if(eqp>0){ctx.save();ctx.translate(540,900);ctx.scale(eqp,eqp);ctx.fillStyle='rgba(30,24,6,.95)';ctx.beginPath();ctx.arc(0,0,40,0,6.283);ctx.fill();ctx.strokeStyle=GOLD;ctx.lineWidth=3;ctx.stroke();txt('=',0,18,54,850,GOLD,'center',A,0);ctx.restore();}
   caption(t,30.4,32.9,[['지구 위의 방',46,850,GR],['  vs  ',40,600,SUB],['우주에서 가속하는 방',46,850,SR]],'손에서 공을 놓으면?');
-  caption(t,33.0,34.7,[['방 안에서는 ',46,700,INK],['어떤 실험으로도 구별 불가',46,850,GR]],'등가 원리 — 일반 상대성 이론의 출발점');
+  caption(t,33.0,34.7,[['작은 방 안에서는 ',44,700,INK],['어떤 실험으로도 구별 불가',46,850,GR]],'등가 원리 — 일반 상대성 이론의 출발점 (방이 충분히 작을 때)');
 }
 /* =========================================================
    6–7. 휜 시공간과 중력 시간 지연 (35–49초)
@@ -375,7 +376,7 @@ const RAYB=.42,RAYA=.42,rayV=u=>RAYB-RAYA*(u+Math.sqrt(u*u+RAYB*RAYB))/2+RAYA*RA
 function curveScene(t){
   if(t<34.9||t>49.4)return;const A=io(t,35.0,48.85,.4,.4),w=wAt(t);
   head(t,35.05,42.75,[['중력의 정체는',66,800,INK]],[['휘어진 시공간',68,850,GR]]);
-  head(t,43.05,48.75,[['중력이 강한 곳에서',64,800,INK]],[['시간은 ',64,800,INK],['느리게',68,850,GR],[' 흐릅니다',64,800,INK]]);
+  head(t,43.05,48.75,[['무거운 천체에 가까울수록',64,800,INK]],[['시간은 ',64,800,INK],['느리게',68,850,GR],[' 흐릅니다',64,800,INK]]);
   ctx.save();ctx.globalAlpha=1;drawGrid(t,A*E.out(seg(t,35.0,35.6)),w);ctx.restore();
   // 행성 궤도
   const oa=A*io(t,37.0,42.9,.5,.4);let behind=null,front=null;
@@ -399,7 +400,7 @@ function curveScene(t){
     const lp=P3(1.0,rayV(1.0),surfZ(1.0,rayV(1.0),w));const ta=ra*E.out(seg(t,41.6,42.0));
     ctx.save();ctx.shadowColor='rgba(0,0,0,1)';ctx.shadowBlur=14;txt('빛도 휘어 갑니다',lp[0]-10,lp[1]+52,32,800,LIGHT,'right',ta,0);
     const sp2=P3(1.0,RAYB,surfZ(1.0,RAYB,w));txt('휘지 않았다면',sp2[0]-10,sp2[1]+92,24,650,'#c7c7cc','right',ta,0);ctx.restore();}
-  txt('※ 휜 고무판은 3차원 시공간을 단순화한 비유',540,1452,23,550,'#8e8e93','center',A*io(t,37.4,42.8),0);
+  txt('※ 휜 고무판은 4차원 시공간의 휨을 2차원으로 단순화한 비유',540,1452,23,550,'#8e8e93','center',A*io(t,37.4,42.8),0);
   // 중력 시간 지연: 두 시계
   const ga=A*io(t,43.6,48.85,.5,.4);
   if(ga>0){const near=[-.2,.16],far=[.84,-.62];
@@ -412,7 +413,7 @@ function curveScene(t){
   caption(t,35.4,37.2,[['무거운 별을 올려놓으면',46,700,INK]]);
   caption(t,37.3,39.6,[['시공간이 휘고, 행성은 ',44,700,INK],['휜 길을 따라',46,850,GR],[' 돕니다',44,700,INK]],'끌어당기는 힘이 아니라, 길 자체가 휘어 있는 것');
   caption(t,39.8,42.8,[['빛조차 ',46,700,INK],['휜 시공간을 따라',48,850,GR],[' 꺾입니다',46,700,INK]],'1919년 개기일식 관측으로 처음 확인');
-  caption(t,43.4,46.2,[['무거운 천체에 가까울수록 ',44,700,INK],['시계가 느려집니다',46,850,GR]],'※ 이해를 돕기 위해 차이를 크게 과장했습니다');
+  caption(t,43.4,46.2,[['우물 깊은 곳의 시계가 ',44,700,INK],['더 느리게',46,850,GR],[' 갑니다',44,700,INK]],'※ 이해를 돕기 위해 차이를 크게 과장했습니다');
   caption(t,46.3,48.75,[['높이 ',46,700,INK],['33cm',48,850,GR],[' 차이도 원자시계로 측정됩니다',46,700,INK]],'2010년 미국 NIST 실험 — 높은 쪽 시계가 더 빨리 감');
 }
 /* =========================================================
@@ -440,14 +441,14 @@ function gpsScene(t){
   // 막대
   txt('위성 시계가 하루에 달라지는 시간 (지상 대비)',540,1112,24,650,SUB,'center',A*E.out(seg(t,49.8,50.2)),0);
   const ax=A*E.out(seg(t,49.8,50.2));ctx.strokeStyle=`rgba(255,255,255,${(.4*ax).toFixed(3)})`;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(BARX,1124);ctx.lineTo(BARX,1350);ctx.stroke();
-  [[ROWS[0],-7.21,SR,'빠르게 움직여서 (특수)','−7.2 μs',50.0],[ROWS[1],45.72,GR,'중력이 약해서 (일반)','+45.7 μs',51.0],[ROWS[2],38.50,GOLD,'합계','+38.5 μs',52.0]].forEach(([y,v,col,lab,val,t0])=>{
+  [[ROWS[0],-7.21,SR,'빠르게 움직여서 (특수)','−7.2 μs',50.0],[ROWS[1],45.72,GR,'높이 떠 있어서 (일반)','+45.7 μs',51.0],[ROWS[2],38.50,GOLD,'합계','+38.5 μs',52.0]].forEach(([y,v,col,lab,val,t0])=>{
     const p=E.out(seg(t,t0,t0+.6)),a=A*E.out(seg(t,t0,t0+.25));if(a<=0)return;const len=v*BSC*p;
     ctx.save();ctx.globalAlpha=a;ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=14;rr(Math.min(BARX,BARX+len),y-17,Math.max(2,Math.abs(len)),34,10);ctx.fill();ctx.restore();
     if(v<0){txt(val,BARX+len-14,y+11,30,850,col,'right',a,0);txt(lab,BARX+18,y+10,28,750,col,'left',a,0);}
     else{txt(val,BARX+len+14,y+11,30,850,col,'left',a,0);txt(lab,BARX-18,y+10,28,750,col,'right',a,0);}});
   const cp=E.back(seg(t,52.85,53.25));if(cp>0){ctx.save();ctx.translate(540,1410);ctx.scale(cp,cp);ctx.fillStyle='rgba(30,24,6,.95)';rr(-330,-36,660,72,36);ctx.fill();ctx.strokeStyle=GOLD;ctx.lineWidth=2.5;ctx.stroke();
     rich([['38.5 μs × 빛의 속도 ≈ ',30,700,INK],['11.5 km',36,850,GOLD]],0,12,A);ctx.restore();}
-  caption(t,49.4,52.8,[['속도로 ',44,700,INK],['느려지고',46,850,SR],[', 약한 중력으로 ',44,700,INK],['빨라져서',46,850,GR]],'합치면 하루 38.5 μs(백만분의 38.5초) 앞서 갑니다',1528);
+  caption(t,49.4,52.8,[['속도로 ',44,700,INK],['느려지고',46,850,SR],[', 높은 고도 덕에 ',44,700,INK],['빨라져서',46,850,GR]],'합치면 하루 38.5 μs(백만분의 38.5초) 앞서 갑니다',1528);
   caption(t,53.0,55.75,[['그래서 위성 시계는 ',44,700,INK],['일부러 느리게',46,850,GOLD],[' 맞춰 쏘아 올립니다',44,700,INK]],'기준 주파수 10.23 MHz → 10.22999999543 MHz',1528);
 }
 /* =========================================================
@@ -457,13 +458,13 @@ function endScene(t){
   if(t<55.9)return;
   const h=E.out(seg(t,56.0,56.5));txt('60초 정리',540,330+(1-h)*20,40,750,SUB,'center',h,0);
   const a1=E.out(seg(t,56.2,56.7)),a2=E.out(seg(t,56.8,57.3));
-  theoryCard(80,420,920,280,SR,iconLightClock,'특수 상대성 이론','빠르게 움직일수록','시간이 느리게 흐르고',a1,-(1-a1)*100,t);
-  theoryCard(80,740,920,280,GR,iconWell,'일반 상대성 이론','중력이 강할수록','시간이 느리게 흐릅니다',a2,(1-a2)*100,t);
+  theoryCard(80,420,920,280,SR,iconLightClock,'특수 상대성 이론','빠르게 움직일수록','시계가 느리게 갑니다 (보는 사람 기준)',a1,-(1-a1)*100,t);
+  theoryCard(80,740,920,280,GR,iconWell,'일반 상대성 이론','무거운 천체에 가까울수록','시계가 느리게 갑니다',a2,(1-a2)*100,t);
   const b=E.out(seg(t,57.6,58.3));
   if(b>0){ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=36;ctx.translate(540,1210+(1-b)*24);const sc=lerp(.92,1,E.back(b));ctx.scale(sc,sc);
     const gg=ctx.createLinearGradient(-380,0,380,0);gg.addColorStop(0,SR);gg.addColorStop(.5,'#ffffff');gg.addColorStop(1,GR);
     ctx.globalAlpha=b;ctx.font='850 92px Pretendard';ctx.letterSpacing='-3px';ctx.textAlign='center';ctx.fillStyle=gg;ctx.fillText('시간은 상대적입니다',0,0);ctx.restore();}
-  txt('그 덕분에 지금 당신의 지도 앱이 정확합니다',540,1320,32,650,'#c7c7cc','center',E.out(seg(t,58.3,58.9)),-.01);
+  txt('GPS는 실제로 이 차이를 계산에 넣어 작동합니다',540,1320,32,650,'#c7c7cc','center',E.out(seg(t,58.3,58.9)),-.01);
 }
 /* 정리 카드: 연도 대신 이론 이름을 작은 칩으로 */
 const _tc=theoryCard;

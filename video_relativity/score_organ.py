@@ -158,7 +158,7 @@ F=fx+fw*.8; F/=np.percentile(np.abs(F),99.95)                       # 째깍·�
 mix=O*.42+F*.5                                                      # 째깍·핑이 오르간 위로 들리도록
 mix=hp(mix,24); mix*=np.clip(t/.01,0,1)*np.clip((D-t)/1.4,0,1)
 # 통합 음량을 쇼츠 기준(-14 LUFS 안팎)에 가깝게: RMS 기준으로 맞춘 뒤 순간 최대치만 부드럽게 눌러 줌
-mix*=10**(-15.5/20)/np.sqrt((mix**2).mean())
+mix*=10**(-18.5/20)/np.sqrt((mix**2).mean())   # 요청에 따라 3 dB 낮춤
 mix=np.tanh(mix/.85)*.85
 mix*=min(1,10**(-1/20)/np.abs(mix).max())
 w=wave.open(sys.argv[1],'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr); w.writeframes((mix.T*32767).astype('<i2').tobytes()); w.close()
