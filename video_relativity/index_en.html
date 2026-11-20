@@ -66,8 +66,8 @@ function chip(t,tin,tout,s,col){const a=io(t,tin,tout);if(a<=0)return;const w=me
   txt(s,108,238,30,700,col,'left',a,0);}
 function head(t,tin,tout,l1,l2){const a=io(t,tin,tout);if(a<=0)return;const d=(1-E.out(seg(t,tin,tin+.55)))*30;
   ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=24;rich(l1,80,352+d,a,'left');if(l2)rich(l2,80,436+d,a,'left');ctx.restore();}
-function caption(t,tin,tout,parts,sub,y=1528){const a=io(t,tin,tout,.45,.3);if(a<=0)return;const d=(1-E.out(seg(t,tin,tin+.45)))*20;
-  ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=26;rich(parts,540,y+d,a);if(sub)txt(sub,540,y+56+d,29,550,'#c7c7cc','center',a,-.01);ctx.restore();}
+function caption(t,tin,tout,parts,sub,y=1500){const a=io(t,tin,tout,.45,.3);if(a<=0)return;const d=(1-E.out(seg(t,tin,tin+.45)))*20;
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=26;rich(parts,540,y+d,a,'center',800);if(sub)txt(sub,540,y+54+d,29,550,'#c7c7cc','center',a,-.01,800);ctx.restore();}
 const ui=document.getElementById('ui');
 function el(html,style){const d=document.createElement('div');d.className='tx';d.innerHTML=html.replace(/\$([^$]+)\$/g,(_,m)=>katex.renderToString(m,{throwOnError:true}));Object.assign(d.style,style);ui.appendChild(d);return d;}
 function domVis(d,a,dy=0,sc=1){d.style.opacity=a.toFixed(4);d.style.transform=`translateY(${dy.toFixed(1)}px) scale(${sc.toFixed(4)})`;}
@@ -92,8 +92,8 @@ function theoryCard(x,y,w,h,col,icon,year,title,sub,a,dx,t){
   ctx.fillStyle='rgba(14,18,30,.82)';rr(x,y,w,h,44);ctx.fill();ctx.strokeStyle=col;ctx.globalAlpha=a*.45;ctx.lineWidth=2;ctx.stroke();ctx.globalAlpha=a;
   icon(x+150,y+h/2,1,t,col,a);
   if(year){const yw=meas(year,26,800,0)+36;ctx.fillStyle=col;ctx.globalAlpha=a*.18;rr(x+300,y+h/2-92,yw,44,22);ctx.fill();ctx.globalAlpha=a;txt(year,x+318,y+h/2-61,26,800,col,'left',1,0);}
-  txt(title,x+300,y+h/2+(year?2:-8),50,850,col,'left',1,-.03,w-330);
-  txt(sub,x+300,y+h/2+(year?56:46),32,650,INK,'left',1,-.02,w-330);ctx.restore();
+  txt(title,x+300,y+h/2+(year?2:-8),50,850,col,'left',1,-.03,w-360);
+  txt(sub,x+300,y+h/2+(year?56:46),32,650,INK,'left',1,-.02,w-360);ctx.restore();
 }
 
 /* =========================================================
@@ -116,7 +116,7 @@ function hook(t){
     r.pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();}
   // 축척 5 km
   ctx.strokeStyle='rgba(255,255,255,.6)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(860,1362);ctx.lineTo(860+5*KMPX,1362);ctx.moveTo(860,1354);ctx.lineTo(860,1370);ctx.moveTo(860+5*KMPX,1354);ctx.lineTo(860+5*KMPX,1370);ctx.stroke();
-  txt('5 km',860+2.5*KMPX,1346,22,700,'#c7c7cc','center',1,0);
+  txt('5 km',860+2.5*KMPX,1346,24,700,'#c7c7cc','center',1,0);
   const dayP=E.io(seg(t,.5,3.5)),e=11.54*dayP,R=R0+e*KMPX;   // 오차는 경과 시간에 정비례
   // 실제 거리(파랑)와 시계 오차로 계산된 거리(빨강)
   ctx.strokeStyle='rgba(90,200,250,.5)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(SAT[0],SAT[1],R0,TH-.42,TH+.42);ctx.stroke();
@@ -139,19 +139,20 @@ function hook(t){
   ctx.restore();
   const h1=E.out(seg(t,-.3,.25)),h2=E.out(seg(t,.25,.75));
   ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=24;
-  rich([['Ignore relativity, and GPS',56,800,INK]],80,352+(1-h1)*28,h1*A,'left');
-  rich([['misjudges distance by ',52,800,INK],['11 km (7 mi)',56,850,'#ff8a80'],[' a day',52,800,INK]],80,436+(1-h2)*28,h2*A,'left');ctx.restore();
+  rich([['Without relativity,',56,800,INK]],80,318+(1-h1)*28,h1*A,'left');
+  rich([['GPS would misjudge distances',56,800,INK]],80,390+(1-h1)*28,h1*A,'left');
+  rich([['by ',56,800,INK],['11 km (7 mi)',60,850,'#ff8a80'],[' every day',56,800,INK]],80,462+(1-h2)*28,h2*A,'left');ctx.restore();
   const wa=io(t,3.55,4.4,.3,.25);if(wa>0){ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=30;ctx.translate(540,1540);const sc=lerp(.85,1,E.back(seg(t,3.55,3.95)));ctx.scale(sc,sc);txt('But why?',0,0,66,850,INK,'center',wa,-.03);ctx.restore();}
 }
 /* ---------- 1. 두 이론 소개 ---------- */
 function title(t){
   if(t<S.title-.1||t>S.c+.2)return;
-  const out=1-E.in(seg(t,7.65,8.05));
-  head(t,S.title+.05,7.75,[['Time does not tick',64,800,INK]],[['the same',66,850,GOLD],[' for everyone',64,800,INK]]);
+  const out=1-E.in(seg(t,7.45,7.85));
+  head(t,S.title+.05,7.63,[["Time doesn't tick",64,800,INK]],[['the same',66,850,GOLD],[' for everyone',64,800,INK]]);
   const a1=E.out(seg(t,5.0,5.55))*out,a2=E.out(seg(t,5.6,6.15))*out;
   theoryCard(80,580,920,330,SR,iconLightClock,'1905','Special Relativity','Moving clocks tick slower',a1,-(1-a1)*120,t);
-  theoryCard(80,950,920,330,GR,iconWell,'1915','General Relativity','Clocks near heavy objects tick slower',a2,(1-a2)*120,t);
-  caption(t,6.4,7.7,[["Einstein's two big ideas in ",46,700,INK],['60 seconds',48,850,GOLD]]);
+  theoryCard(80,950,920,330,GR,iconWell,'1915','General Relativity','Clocks near mass tick slower',a2,(1-a2)*120,t);
+  caption(t,6.4,7.7,[["Einstein's two big ideas in ",44,700,INK],['60 seconds',46,850,GOLD]]);
 }
 /* =========================================================
    2. 빛의 속도는 누가 재도 같다 (8–13초)
@@ -168,8 +169,8 @@ function drawShip(x,y,t){
 }
 const shipX=t=>-160+210*(t-8),SHIPY=700,FIRE=9.0,BEAM0=shipX(FIRE)+150;
 function cScene(t){
-  if(t<7.9||t>13.3)return;const A=io(t,8.0,12.85,.4,.35);
-  head(t,8.05,12.8,[['The speed of light is',66,800,INK]],[['the same',68,850,SR],[' for everyone',66,800,INK]]);
+  if(t<7.9||t>13.3)return;const A=io(t,8.0,12.55,.4,.35);
+  head(t,8.05,12.63,[['The speed of light is',66,800,INK]],[['the same',68,850,SR],[' for everyone',66,800,INK]]);
   ctx.save();ctx.globalAlpha=A;
   // 지면과 관찰자
   ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(60,990);ctx.lineTo(1020,990);ctx.stroke();
@@ -196,8 +197,8 @@ function cScene(t){
   if(ga>0)[['Measured from the ground',300],['Measured from the ship',780]].forEach(([s,x],i)=>{const p=E.out(seg(t,11.0+i*.25,11.45+i*.25));
     ctx.save();ctx.globalAlpha=A*p;ctx.fillStyle='rgba(12,18,30,.88)';rr(x-220,1290,440,120,34);ctx.fill();ctx.strokeStyle='rgba(255,241,168,.45)';ctx.lineWidth=2;ctx.stroke();ctx.restore();
     txt(s,x,1335,26,650,SUB,'center',A*p,0);txt('c',x,1394,52,850,LIGHT,'center',A*p,0);});
-  caption(t,8.5,10.9,[['A ship at ',46,700,INK],['half light speed',48,850,SR],[' fires a beam',46,700,INK]],'c = the speed of light');
-  caption(t,11.1,12.75,[['Everyone measures ',46,700,INK],['exactly c',48,850,LIGHT]],'299,792,458 m/s in a vacuum — the starting point of Special Relativity');
+  caption(t,8.5,10.72,[['A ship at ',46,700,INK],['half light speed',48,850,SR],[' fires a beam',46,700,INK]],'c = the speed of light');
+  caption(t,11.1,12.75,[['Everyone measures ',46,700,INK],['exactly c',48,850,LIGHT]],'c = 299,792,458 m/s in a vacuum');
 }
 function stick(x,feet,h,col,armTo){
   ctx.save();ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=h*.055;ctx.lineCap='round';ctx.lineJoin='round';
@@ -217,8 +218,8 @@ const topY=t=>{const tt=Math.min(t,LC.run1);return tt<LC.ph0?TY1:bounceY(tt,LC.p
 const botY=t=>{const tt=Math.min(t,LC.run1);return tt<LC.ph0?BY1:tt<LC.run0?bounceY(tt,LC.ph0,LC.tau0,BY0,BY1):bounceY(tt,LC.run0,LC.tau1,BY0,BY1);};
 function mirror(x,y,a,flash,wf=1){ctx.save();ctx.globalAlpha=a;ctx.shadowColor='rgba(150,220,255,.9)';ctx.shadowBlur=14+30*flash;ctx.fillStyle=flash>0?`rgb(${Math.round(lerp(190,255,flash))},${Math.round(lerp(225,255,flash))},255)`:'#bfe3ff';rr(x-78*wf,y-6,156*wf,12,6);ctx.fill();ctx.restore();}
 function clockScene(t){
-  if(t<12.9||t>23.3)return;const A=io(t,13.0,22.85,.4,.35);
-  head(t,13.05,22.8,[['So moving clocks',66,800,INK]],[['tick ',66,800,INK],['slower',68,850,SR]]);
+  if(t<12.9||t>23.3)return;const A=io(t,13.0,22.55,.4,.35);
+  head(t,13.05,22.63,[['So moving clocks',66,800,INK]],[['tick ',66,800,INK],['slower',68,850,SR]]);
   // ---- 위: 멈춘 시계 ----
   const tA=A*(1-sm(t,17.85,18.3));
   if(tA>0){
@@ -227,10 +228,10 @@ function clockScene(t){
     mirror(TX,TY0,tA,yp<TY0+40?fl:0);mirror(TX,TY1,tA,yp>TY1-40?fl:0);
     ctx.save();ctx.globalAlpha=tA;const g=ctx.createLinearGradient(0,TY0,0,TY1);ctx.strokeStyle='rgba(255,241,168,.25)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(TX,TY0+6);ctx.lineTo(TX,TY1-6);ctx.stroke();ctx.restore();
     glowDot(TX,yp,13,'rgba(255,241,168,A)',tA,4);
-    txt('Clock at rest',110,690,40,800,INK,'left',tA,-.02,330);txt('not moving',110,734,26,600,SUB,'left',tA,0);
+    txt('Clock at rest',110,690,40,800,INK,'left',tA,-.02,330);txt('standing still',110,734,26,600,SUB,'left',tA,0);
     const n=countBefore(EV.topHits,t,LC.run0+1e-6);
-    txt('Mirror hits',990,668,24,650,SUB,'right',tA*E.out(seg(t,14.5,14.9)),0);
-    txt(t<LC.run0?'–':String(n),990,746,72,850,t>=LC.run1?GOLD:INK,'right',tA*E.out(seg(t,14.5,14.9)),-.03);
+    txt('Mirror hits',935,668,24,650,SUB,'right',tA*E.out(seg(t,14.5,14.9)),0);
+    txt(t<LC.run0?'–':String(n),935,746,72,850,t>=LC.run1?GOLD:INK,'right',tA*E.out(seg(t,14.5,14.9)),-.03);
   }
   // ---- 아래: 움직이는 시계 ----
   const bx=botX(t),yb=botY(t),cw=t<LC.run0?1:lerp(1,.8,E.out(seg(t,LC.run0,LC.run0+.15)));
@@ -241,7 +242,7 @@ function clockScene(t){
     for(let s=LC.run0;s<=Math.min(t,LC.run1)+1e-9;s+=1/120){const x=botX(s),y=botY(s);s===LC.run0?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.lineTo(bx,yb);ctx.stroke();ctx.restore();}
   mirror(bx,BY0,A,yb<BY0+40?flb:0,cw);mirror(bx,BY1,A,yb>BY1-40?flb:0,cw);
   // 삼각형 분석
-  const ta=io(t,17.9,22.85,.3,.35);
+  const ta=io(t,17.9,22.55,.3,.35);
   if(ta>0){const Ax=330,Ay=BY0,Cx=330,Cy=BY1,Bx=540,By=BY1;
     ctx.save();ctx.globalAlpha=ta;ctx.fillStyle='rgba(255,200,61,.12)';ctx.beginPath();ctx.moveTo(Ax,Ay);ctx.lineTo(Cx,Cy);ctx.lineTo(Bx,By);ctx.closePath();ctx.fill();
     const p1=E.out(seg(t,17.95,18.45)),p2=E.out(seg(t,18.35,18.85)),p3=E.out(seg(t,18.75,19.25));
@@ -259,21 +260,21 @@ function clockScene(t){
   if(t>LC.run0-.3&&t<LC.run1+.1){const mp=E.out(seg(t,LC.run0-.2,LC.run0+.2));ctx.save();ctx.globalAlpha=la*mp;ctx.fillStyle='rgba(8,20,30,.85)';rr(bx-58,920,116,44,22);ctx.fill();ctx.restore();txt('→ 0.6c',bx,952,26,850,SR,'center',la*mp,0);}
   txt('Moving clock',110,1338,38,800,INK,'left',la,-.02);txt('at 60% of light speed',110,1378,26,600,SR,'left',la,0);
   const nb=countBefore(EV.botHits,t,LC.run0+1e-6);
-  txt(t<LC.run0?'–':String(nb),990,1372,72,850,t>=LC.run1?GOLD:INK,'right',la*E.out(seg(t,14.5,14.9)),-.03);
-  const sa=io(t,LC.run1,18.0,.2,.2);if(sa>0){ctx.save();ctx.globalAlpha=sa;ctx.fillStyle='rgba(30,24,6,.9)';rr(290,880,500,64,32);ctx.fill();ctx.strokeStyle='rgba(255,200,61,.6)';ctx.lineWidth=2;ctx.stroke();ctx.restore();txt('Same 3 seconds · 5 vs 4 hits',540,923,30,800,GOLD,'center',sa,0);}
+  txt(t<LC.run0?'–':String(nb),935,1372,72,850,t>=LC.run1?GOLD:INK,'right',la*E.out(seg(t,14.5,14.9)),-.03);
+  const sa=io(t,LC.run1,18.0,.2,.2);if(sa>0){ctx.save();ctx.globalAlpha=sa;ctx.fillStyle='rgba(30,24,6,.9)';rr(290,880,500,64,32);ctx.fill();ctx.strokeStyle='rgba(255,200,61,.6)';ctx.lineWidth=2;ctx.stroke();ctx.restore();txt('Same 3 seconds: 5 hits vs 4',540,923,30,800,GOLD,'center',sa,0);}
   // 수식 판
-  const fa=io(t,18.3,22.85,.4,.35);
+  const fa=io(t,18.3,22.55,.4,.35);
   if(fa>0){ctx.save();ctx.globalAlpha=fa;ctx.fillStyle='rgba(12,16,28,.86)';rr(100,560,880,330,40);ctx.fill();ctx.strokeStyle='rgba(255,200,61,.3)';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
     txt('By the Pythagorean theorem',540,612,28,650,SUB,'center',fa,0);}
-  caption(t,13.2,14.45,[['A ',46,700,INK],['light clock',48,850,SR],[': light bouncing between mirrors',46,700,INK]],'Each crossing = one tick');
-  caption(t,14.6,17.6,[['Now move the lower clock at ',46,700,INK],['60% light speed',48,850,SR]],'Count the mirror hits in the same 3 seconds');
-  caption(t,17.9,20.4,[['Its light takes a ',46,700,INK],['longer, slanted path',48,850,GOLD]],"Light's speed can't change, so each tick takes longer");
-  caption(t,20.6,22.75,[['1 s on the moving clock = ',44,700,INK],['1.25 s at rest',46,850,SR]],'This is called time dilation');
+  caption(t,13.2,14.22,[['This is a ',46,700,INK],['light clock',48,850,SR]],'Each trip between the mirrors = one tick');
+  caption(t,14.6,17.52,[['Now the bottom clock ',46,700,INK],['moves fast',48,850,SR]],'60% of light speed — count the hits in 3 seconds');
+  caption(t,17.9,20.22,[['Its light travels ',46,700,INK],['a longer path',48,850,GOLD]],'Same light speed, longer path → slower ticks');
+  caption(t,20.6,22.75,[['Moving clock: 1 s = ',46,700,INK],['1.25 s at rest',48,850,SR]],"That's time dilation");
 }
 /* =========================================================
    4. 속도와 시간 지연 그래프 (23–30초)
    ========================================================= */
-const GX0=150,GX1=950,GYB=1300,GYT=620;
+const GX0=150,GX1=900,GYB=1300,GYT=620;
 const gx=b=>GX0+b*(GX1-GX0),gy=g=>GYB-(g-1)/7*(GYB-GYT);
 function dial(cx,cy,r,ang,col,a,flash){
   ctx.save();ctx.globalAlpha=a;ctx.fillStyle='rgba(10,14,24,.92)';ctx.beginPath();ctx.arc(cx,cy,r,0,6.283);ctx.fill();
@@ -284,13 +285,13 @@ function dial(cx,cy,r,ang,col,a,flash){
 }
 function tickAngle(arr,t){const n=countBefore(arr,t),lt=lastBefore(arr,t);return (n-1+E.back(cl((t-lt)/.12)))*6.283/8+(n===0?6.283/8:0);}
 function gammaScene(t){
-  if(t<22.9||t>30.3)return;const A=io(t,23.0,29.75,.4,.35);
-  head(t,23.05,29.7,[['Near light speed,',66,800,INK]],[['time almost ',66,800,INK],['stops',68,850,SR]]);
+  if(t<22.9||t>30.3)return;const A=io(t,23.0,29.45,.4,.35);
+  head(t,23.05,29.63,[['Near light speed,',66,800,INK]],[['time almost ',66,800,INK],['stops',68,850,SR]]);
   const ap=E.out(seg(t,23.0,23.6));
   ctx.save();ctx.globalAlpha=A;ctx.strokeStyle='rgba(255,255,255,.45)';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(GX0,GYB);ctx.lineTo(lerp(GX0,GX1+20,ap),GYB);ctx.moveTo(GX0,GYB);ctx.lineTo(GX0,lerp(GYB,GYT-20,ap));ctx.stroke();
   for(const g of [2,4,6,8]){ctx.strokeStyle='rgba(255,255,255,.07)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(GX0,gy(g));ctx.lineTo(GX1,gy(g));ctx.stroke();txt(g+'×',GX0-14,gy(g)+9,24,650,SUB,'right',ap,0);}
   txt('1×',GX0-14,GYB+9,24,650,SUB,'right',ap,0);
-  for(const [b,s] of [[0,'0'],[.5,'50%'],[1,'100%']])txt(s,gx(b),GYB+40,24,650,SUB,'center',ap,0);
+  for(const [b,s] of [[.5,'50%'],[1,'100%']])txt(s,gx(b),GYB+40,24,650,SUB,'center',ap,0);
   txt('Speed (% of light speed) →',GX1,GYB+78,26,650,'#c7c7cc','right',ap,0);txt('↑ How many times slower',GX0,GYT-34,26,650,'#c7c7cc','left',ap,0);
   ctx.setLineDash([8,10]);ctx.strokeStyle='rgba(255,241,168,.6)';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(GX1,GYB);ctx.lineTo(GX1,GYT-10);ctx.stroke();ctx.setLineDash([]);
   txt('Light speed',GX1-10,GYB-16,24,750,LIGHT,'right',ap,0);
@@ -311,8 +312,8 @@ function gammaScene(t){
     dial(300,790,74,tickAngle(EV.earthTicks,t),GREEN,ca,fE);dial(530,790,74,tickAngle(EV.shipTicks,t),SR,ca,fS);
     txt('Earth clock',300,900,28,750,INK,'center',ca,0);txt('Ship clock',530,900,28,750,SR,'center',ca,0);
     txt('Running at '+Math.round(100/TL.gamma(Math.min(.995,bt)))+'%',530,936,26,700,'#c7c7cc','center',ca*E.out(seg(t,23.7,24)),0);}
-  caption(t,23.3,27.5,[['The faster you go, ',46,700,INK],['the steeper it climbs',48,850,SR]],"At 99% light speed, Earth sees the ship's clock run about 7× slower");
-  caption(t,27.7,29.7,[['At everyday speeds ',46,700,INK],["it's too tiny to notice",48,850,SR]],'A 1-hour flight at 1,000 km/h (620 mph): ~1.5 billionths of a second (speed effect only)');
+  caption(t,23.3,27.32,[['The faster you go, ',46,700,INK],['the steeper',48,850,SR]],'At 99% of c: about 7× slower, as seen from Earth');
+  caption(t,27.7,29.7,[['At everyday speeds, ',46,700,INK],["it's tiny",48,850,SR]],'Speed alone: 1 hour on a jet ≈ 1.5 billionths of a second');
 }
 /* =========================================================
    5. 등가 원리 (30–35초)
@@ -320,8 +321,8 @@ function gammaScene(t){
 const BOXL={x:110,y:640,w:400,h:520},BOXR={x:570,y:640,w:400,h:520},FLOOR=1160,HAND=900,DROP=31.3,LAND=32.3;
 const ballY=t=>{if(t<DROP)return HAND;if(t<LAND){const s=(t-DROP)/(LAND-DROP);return HAND+(FLOOR-16-HAND)*s*s;}const b=t-LAND;return FLOOR-16-46*Math.max(0,Math.sin(Math.PI*b/.36))*Math.exp(-b*2)-(b>.36?14*Math.max(0,Math.sin(Math.PI*(b-.36)/.22)):0);};
 function eqScene(t){
-  if(t<29.9||t>35.3)return;const A=io(t,30.0,34.8,.45,.35);
-  head(t,30.05,34.75,[['Gravity and acceleration',64,800,INK]],[["can't be ",66,800,INK],['told apart',68,850,GR]]);
+  if(t<29.9||t>35.3)return;const A=io(t,30.0,34.5,.45,.35);
+  head(t,30.05,34.63,[['Gravity and acceleration',64,800,INK]],[["can't be ",66,800,INK],['told apart',68,850,GR]]);
   [[BOXL,'Room on Earth',false],[BOXR,'Rocket in space',true]].forEach(([B,lab,rocket],i)=>{
     const p=E.out(seg(t,30.1+i*.2,30.6+i*.2)),a=A*p;if(a<=0)return;
     ctx.save();ctx.globalAlpha=a;ctx.translate(0,(1-p)*40);
@@ -344,8 +345,8 @@ function eqScene(t){
     txt(rocket?'Accelerating at 9.8 m/s²':'Gravity: 9.8 m/s²',B.x+B.w/2,B.y+92,24,650,'#c7c7cc','center',1,0);
     ctx.restore();});
   const eqp=E.back(seg(t,32.55,32.95));if(eqp>0){ctx.save();ctx.translate(540,900);ctx.scale(eqp,eqp);ctx.fillStyle='rgba(30,24,6,.95)';ctx.beginPath();ctx.arc(0,0,40,0,6.283);ctx.fill();ctx.strokeStyle=GOLD;ctx.lineWidth=3;ctx.stroke();txt('=',0,18,54,850,GOLD,'center',A,0);ctx.restore();}
-  caption(t,30.4,32.9,[['Room on Earth',46,850,GR],['  vs  ',40,600,SUB],['Rocket in space',46,850,SR]],'Drop a ball — what happens?');
-  caption(t,33.0,34.7,[['In a small room, ',44,700,INK],['no test can tell them apart',46,850,GR]],'The equivalence principle — where General Relativity begins');
+  caption(t,30.4,32.62,[['Room on Earth',46,850,GR],['  vs  ',40,600,SUB],['Rocket in space',46,850,SR]],'Drop a ball — what happens?');
+  caption(t,33.0,34.7,[['In a small room, ',46,700,INK],['no test can tell',48,850,GR]],'The equivalence principle — where General Relativity begins');
 }
 /* =========================================================
    6–7. 휜 시공간과 중력 시간 지연 (35–49초)
@@ -374,9 +375,9 @@ const RO=.58,orbAng=t=>.6+6.283*(t-37)/3.4;
 function planetPos(t,w){const a=orbAng(t),u=RO*Math.cos(a),v=RO*Math.sin(a);return [u,v,P3(u,v,surfZ(u,v,w)+22)];}
 const RAYB=.42,RAYA=.42,rayV=u=>RAYB-RAYA*(u+Math.sqrt(u*u+RAYB*RAYB))/2+RAYA*RAYB/2*0;
 function curveScene(t){
-  if(t<34.9||t>49.4)return;const A=io(t,35.0,48.85,.4,.4),w=wAt(t);
-  head(t,35.05,42.75,[['What gravity really is:',66,800,INK]],[['curved spacetime',68,850,GR]]);
-  head(t,43.05,48.75,[['Closer to a heavy mass,',64,800,INK]],[['time runs ',64,800,INK],['slower',68,850,GR]]);
+  if(t<34.9||t>49.4)return;const A=io(t,35.0,48.5,.4,.4),w=wAt(t);
+  head(t,35.05,42.63,[['What gravity really is:',66,800,INK]],[['curved spacetime',68,850,GR]]);
+  head(t,43.05,48.63,[['Closer to a heavy mass,',64,800,INK]],[['time runs ',64,800,INK],['slower',68,850,GR]]);
   ctx.save();ctx.globalAlpha=1;drawGrid(t,A*E.out(seg(t,35.0,35.6)),w);ctx.restore();
   // 행성 궤도
   const oa=A*io(t,37.0,42.9,.5,.4);let behind=null,front=null;
@@ -399,31 +400,31 @@ function curveScene(t){
     if(u1<1.14)glowDot(last[0],last[1],12,'rgba(255,241,168,A)',ra,4);
     const lp=P3(1.0,rayV(1.0),surfZ(1.0,rayV(1.0),w));const ta=ra*E.out(seg(t,41.6,42.0));
     ctx.save();ctx.shadowColor='rgba(0,0,0,1)';ctx.shadowBlur=14;txt('Light bends too',lp[0]-10,lp[1]+52,32,800,LIGHT,'right',ta,0);
-    const sp2=P3(1.0,RAYB,surfZ(1.0,RAYB,w));txt('Straight path',sp2[0]-10,sp2[1]+92,24,650,'#c7c7cc','right',ta,0);ctx.restore();}
-  txt('※ The rubber sheet is a 2D simplification of curved 4D spacetime',540,1452,23,550,'#8e8e93','center',A*io(t,37.4,42.8),0);
+    const sp2=P3(.72,RAYB,surfZ(.72,RAYB,w));txt('Straight path',sp2[0]-10,sp2[1]+64,26,650,'#c7c7cc','right',ta,0);ctx.restore();}
+  txt('The rubber sheet is a 2D picture of curved 4D spacetime',540,1436,25,550,'#8e8e93','center',A*io(t,37.4,42.8),0);
   // 중력 시간 지연: 두 시계
-  const ga=A*io(t,43.6,48.85,.5,.4);
+  const ga=A*io(t,43.6,48.5,.5,.4);
   if(ga>0){const near=[-.2,.16],far=[.84,-.62];
-    [[far,EV.farTicks,SR,'Far away · faster'],[near,EV.nearTicks,GR,'Close in · slower']].forEach(([q,arr,col,lab],i)=>{
+    [[far,EV.farTicks,SR,'Far away · faster'],[near,EV.nearTicks,GR,'Near the mass · slower']].forEach(([q,arr,col,lab],i)=>{
       const p=P3(q[0],q[1],surfZ(q[0],q[1],w)),cx=p[0],cy=p[1]-150-(i?0:-10),pa=ga*E.out(seg(t,43.6+i*.3,44.1+i*.3));
       ctx.save();ctx.globalAlpha=pa;ctx.strokeStyle=col;ctx.lineWidth=2;ctx.setLineDash([4,6]);ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(cx,cy+66);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=col;ctx.beginPath();ctx.arc(p[0],p[1],5,0,6.283);ctx.fill();ctx.restore();
       const fl=Math.max(0,1-(t-lastBefore(arr,t))/.2);dial(cx,cy,62,tickAngle(arr,t),col,pa,fl);
       ctx.save();ctx.shadowColor='rgba(0,0,0,1)';ctx.shadowBlur=12;txt(lab,cx,cy-82,28,800,col,'center',pa,0);ctx.restore();});
     const ca2=ga*E.out(seg(t,47.9,48.2));if(ca2>0){const nf=countBefore(EV.farTicks,t),nn=countBefore(EV.nearTicks,t);txt(`${nf} ticks vs ${nn} ticks`,540,1402,30,800,GOLD,'center',ca2,0);}}
-  caption(t,35.4,37.2,[['Put a ',46,700,INK],['heavy star',48,850,GR],[' on spacetime…',46,700,INK]]);
-  caption(t,37.3,39.6,[['Spacetime curves; the planet ',44,700,INK],['follows the curve',46,850,GR]],"It isn't pulled by a force — its path itself is curved");
-  caption(t,39.8,42.8,[['Even ',46,700,INK],['light',48,850,GR],[' follows curved spacetime',46,700,INK]],'First confirmed during the 1919 solar eclipse');
-  caption(t,43.4,46.2,[['Clocks deeper in the well ',44,700,INK],['tick slower',46,850,GR]],'※ The difference is greatly exaggerated here');
-  caption(t,46.3,48.75,[['Atomic clocks detect it over just ',44,700,INK],['33 cm (1 ft)',46,850,GR]],'NIST experiment, 2010 — the higher clock ran faster');
+  caption(t,35.4,36.92,[['Add a ',46,700,INK],['heavy star',48,850,GR],['…',46,700,INK]]);
+  caption(t,37.3,39.42,[['The planet just ',46,700,INK],['follows the curve',48,850,GR]],"It isn't pulled by a force — its path is curved");
+  caption(t,39.8,42.8,[['Even ',46,700,INK],['light',48,850,GR],[' follows the curve',46,700,INK]],'First confirmed during the 1919 solar eclipse');
+  caption(t,43.4,45.92,[['Clocks deeper in the well ',44,700,INK],['tick slower',46,850,GR]],'Exaggerated for clarity');
+  caption(t,46.3,48.75,[['Measured over just ',46,700,INK],['33 cm (1 ft)',48,850,GR]],'NIST atomic clocks, 2010 — the higher one ran faster');
 }
 /* =========================================================
    8. GPS (49–56초)
    ========================================================= */
-const EC=[540,775],RE=66,RO2=275;   // 지구 반지름 : 궤도 반지름 = 1 : 4.17 (실제 비율)
-const BARX=540,BSC=7,ROWS=[1150,1235,1320];
+const EC=[540,750],RE=66,RO2=275;   // 지구 반지름 : 궤도 반지름 = 1 : 4.17 (실제 비율)
+const BARX=500,BSC=6,ROWS=[1160,1240,1320];
 function gpsScene(t){
-  if(t<48.9||t>56.3)return;const A=io(t,49.0,55.85,.45,.35);
-  head(t,49.05,55.8,[['GPS satellite clocks',66,800,INK]],[['feel ',66,800,INK],['both effects',68,850,GOLD]]);
+  if(t<48.9||t>56.3)return;const A=io(t,49.0,55.5,.45,.35);
+  head(t,49.05,55.45,[['GPS satellite clocks',66,800,INK]],[['feel ',66,800,INK],['both effects',68,850,GOLD]]);
   ctx.save();ctx.globalAlpha=A;
   // 궤도
   const op=E.out(seg(t,49.1,49.8));ctx.strokeStyle='rgba(255,255,255,.22)';ctx.lineWidth=2;ctx.setLineDash([6,10]);ctx.beginPath();ctx.arc(EC[0],EC[1],RO2,-Math.PI/2,-Math.PI/2+6.283*op);ctx.stroke();ctx.setLineDash([]);
@@ -432,24 +433,24 @@ function gpsScene(t){
   g=ctx.createRadialGradient(EC[0]-RE*.35,EC[1]-RE*.4,RE*.1,EC[0],EC[1],RE);g.addColorStop(0,'#9fdcff');g.addColorStop(.6,'#2f7de0');g.addColorStop(1,'#0e2f6b');ctx.fillStyle=g;ctx.beginPath();ctx.arc(EC[0],EC[1],RE,0,6.283);ctx.fill();
   ctx.save();ctx.beginPath();ctx.arc(EC[0],EC[1],RE,0,6.283);ctx.clip();ctx.strokeStyle='rgba(255,255,255,.22)';ctx.lineWidth=1.5;for(let k=0;k<5;k++){const ph=((t*.25+k/5)%1)*Math.PI;ctx.beginPath();ctx.ellipse(EC[0],EC[1],Math.abs(RE*Math.cos(ph)),RE,0,0,6.283);ctx.stroke();}ctx.restore();
   // 위성
-  const sa=-Math.PI/2+(t-49.2)*.55,sx=EC[0]+RO2*Math.cos(sa),sy=EC[1]+RO2*Math.sin(sa);
+  const sa=-Math.PI/2+(t-49.2)*.34,sx=EC[0]+RO2*Math.cos(sa),sy=EC[1]+RO2*Math.sin(sa);
   for(let k=0;k<3;k++){const q=((t-49.4)/1.2+k/3)%1;if(t<49.4)break;const px=lerp(sx,EC[0],q),py=lerp(sy,EC[1],q);ctx.strokeStyle=`rgba(255,241,168,${(.7*(1-q)).toFixed(3)})`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(px,py,10+8*q,sa+Math.PI-.6,sa+Math.PI+.6);ctx.stroke();}
   ctx.save();ctx.translate(sx,sy);ctx.rotate(sa);ctx.fillStyle='#4d7bd6';ctx.fillRect(-10,-44,20,30);ctx.fillRect(-10,14,20,30);ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1;ctx.strokeRect(-10,-44,20,30);ctx.strokeRect(-10,14,20,30);
   ctx.fillStyle='#e9eef6';ctx.fillRect(-13,-13,26,26);ctx.restore();
   ctx.restore();
-  txt('Altitude ~20,200 km · speed ~3.9 km/s',540,1080,24,650,'#c7c7cc','center',A*E.out(seg(t,49.6,50)),0);
+  txt('Altitude ~20,200 km · speed ~3.9 km/s',540,1066,26,650,'#c7c7cc','center',A*E.out(seg(t,49.6,50)),0);
   // 막대
-  txt('Satellite clock drift per day (vs. ground clocks)',540,1112,24,650,SUB,'center',A*E.out(seg(t,49.8,50.2)),0);
+  txt('Daily drift vs. clocks on the ground',540,1112,26,650,SUB,'center',A*E.out(seg(t,49.8,50.2)),0);
   const ax=A*E.out(seg(t,49.8,50.2));ctx.strokeStyle=`rgba(255,255,255,${(.4*ax).toFixed(3)})`;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(BARX,1124);ctx.lineTo(BARX,1350);ctx.stroke();
   [[ROWS[0],-7.21,SR,'Moving fast (special)','−7.2 μs',50.0],[ROWS[1],45.72,GR,'High up (general)','+45.7 μs',51.0],[ROWS[2],38.50,GOLD,'Net','+38.5 μs',52.0]].forEach(([y,v,col,lab,val,t0])=>{
     const p=E.out(seg(t,t0,t0+.6)),a=A*E.out(seg(t,t0,t0+.25));if(a<=0)return;const len=v*BSC*p;
     ctx.save();ctx.globalAlpha=a;ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=14;rr(Math.min(BARX,BARX+len),y-17,Math.max(2,Math.abs(len)),34,10);ctx.fill();ctx.restore();
     if(v<0){txt(val,BARX+len-14,y+11,30,850,col,'right',a,0);txt(lab,BARX+18,y+10,28,750,col,'left',a,0);}
     else{txt(val,BARX+len+14,y+11,30,850,col,'left',a,0);txt(lab,BARX-18,y+10,28,750,col,'right',a,0);}});
-  const cp=E.back(seg(t,52.85,53.25));if(cp>0){ctx.save();ctx.translate(540,1410);ctx.scale(cp,cp);ctx.fillStyle='rgba(30,24,6,.95)';rr(-330,-36,660,72,36);ctx.fill();ctx.strokeStyle=GOLD;ctx.lineWidth=2.5;ctx.stroke();
+  const cp=E.back(seg(t,52.85,53.25));if(cp>0){ctx.save();ctx.globalAlpha=A;ctx.translate(540,1410);ctx.scale(cp,cp);ctx.fillStyle='rgba(30,24,6,.95)';rr(-330,-36,660,72,36);ctx.fill();ctx.strokeStyle=GOLD;ctx.lineWidth=2.5;ctx.stroke();
     rich([['38.5 μs × speed of light ≈ ',30,700,INK],['11.5 km',36,850,GOLD]],0,12,A);ctx.restore();}
-  caption(t,49.4,52.8,[['Speed ',44,700,INK],['slows it',46,850,SR],[', altitude ',44,700,INK],['speeds it up',46,850,GR]],'Net: +38.5 μs a day (μs = a millionth of a second)',1528);
-  caption(t,53.0,55.75,[['So their clocks are ',44,700,INK],['set slow on purpose',46,850,GOLD],[' before launch',44,700,INK]],'Reference frequency: 10.23 MHz → 10.22999999543 MHz',1528);
+  caption(t,49.4,52.62,[['Speed ',44,700,INK],['slows it',46,850,SR],[', altitude ',44,700,INK],['speeds it up',46,850,GR]],'Net: +38.5 μs a day (μs = a millionth of a second)');
+  caption(t,53.0,55.45,[["So they're ",46,700,INK],['set slow before launch',48,850,GOLD]],'Clock frequency: 10.23 → 10.22999999543 MHz');
 }
 /* =========================================================
    9. 정리 (56–60초)
@@ -458,8 +459,8 @@ function endScene(t){
   if(t<55.9)return;
   const h=E.out(seg(t,56.0,56.5));txt('Relativity in 60 seconds',540,330+(1-h)*20,40,750,SUB,'center',h,0);
   const a1=E.out(seg(t,56.2,56.7)),a2=E.out(seg(t,56.8,57.3));
-  theoryCard(80,420,920,280,SR,iconLightClock,'Special Relativity','The faster you move,','the slower your clock ticks (to an observer)',a1,-(1-a1)*100,t);
-  theoryCard(80,740,920,280,GR,iconWell,'General Relativity','The closer to a big mass,','the slower clocks tick',a2,(1-a2)*100,t);
+  theoryCard(80,420,920,280,SR,iconLightClock,'Special Relativity','Motion slows clocks','as seen by an outside observer',a1,-(1-a1)*100,t);
+  theoryCard(80,740,920,280,GR,iconWell,'General Relativity','Mass slows clocks','the closer to it, the slower',a2,(1-a2)*100,t);
   const b=E.out(seg(t,57.6,58.3));
   if(b>0){ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=36;ctx.translate(540,1210+(1-b)*24);const sc=lerp(.92,1,E.back(b));ctx.scale(sc,sc);
     const gg=ctx.createLinearGradient(-380,0,380,0);gg.addColorStop(0,SR);gg.addColorStop(.5,'#ffffff');gg.addColorStop(1,GR);
@@ -478,12 +479,12 @@ const K={
 
 window.renderFrame=t=>{
   ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
-  domVis(K.f1,io(t,18.55,22.85,.4,.35),(1-E.out(seg(t,18.55,19)))*14);
-  domVis(K.f2,io(t,19.5,22.85,.4,.35),0,lerp(.9,1,E.back(seg(t,19.5,19.9))));
-  domVis(K.f3,io(t,20.6,22.85,.4,.35),(1-E.out(seg(t,20.6,21)))*14);
+  domVis(K.f1,io(t,18.55,22.55,.4,.35),(1-E.out(seg(t,18.55,19)))*14);
+  domVis(K.f2,io(t,19.5,22.55,.4,.35),0,lerp(.9,1,E.back(seg(t,19.5,19.9))));
+  domVis(K.f3,io(t,20.6,22.55,.4,.35),(1-E.out(seg(t,20.6,21)))*14);
   bg(t);hook(t);title(t);cScene(t);clockScene(t);gammaScene(t);eqScene(t);curveScene(t);gpsScene(t);endScene(t);
   chip(t,8.0,29.6,'1 · Special Relativity',SR);
-  chip(t,30.0,48.7,'2 · General Relativity',GR);
+  chip(t,30.0,48.55,'2 · General Relativity',GR);
   chip(t,49.0,55.7,'3 · Both at work: GPS',GOLD);
   progress(t);
 };
