@@ -2,3 +2,6 @@ node_modules
 *.wav
 *_무음.mp4
 events.json
+*_silent.mp4
+# 사용자가 제공한 음원이 들어간 파일은 저장소에 올리지 않음
+Relativity_60s_EN.mp4
