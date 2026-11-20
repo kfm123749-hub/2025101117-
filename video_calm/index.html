@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>침착함은 순서다</title>
+<style>
+@font-face{font-family:"Pretendard";font-weight:45 920;font-style:normal;
+  src:url("node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2") format("woff2-variations");}
+*{margin:0;padding:0}html,body{background:#000;overflow:hidden}canvas{display:block;width:1080px;height:1920px}
+</style>
+<script src="timeline.js"></script>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* =========================================================
+   침착함은 순서다 — 60초 모션그래픽
+   입자 1,300개가 '흥분도 A(t)'에 따라 떨다가 잦아든다.
+   같은 입자가 장면마다 곡선 → 숨 쉬는 원 → 이름표 → 한 줄 → 원으로 모인다.
+   ========================================================= */
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const W=1080,HH=1920,DUR=60,T=TL.T;
+const cl=x=>Math.min(1,Math.max(0,x)),lerp=(a,b,s)=>a+(b-a)*s,seg=(t,a,b)=>cl((t-a)/(b-a));
+const E={out:x=>1-Math.pow(1-x,3),in:x=>x*x*x,io:x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,
+  back:x=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}};
+const io=(t,a,b,din=.6,dout=.45)=>E.out(seg(t,a,a+din))*(1-E.in(seg(t,b,b+dout)));
+const INK='#f5f5f7',SUB='#a1a1a6',GOLD='#ffc83d',TEAL='#64e3c0',RED='#ff5a4f',BLUE='#7cc8ff';
+function txt(s,x,y,size,weight,color,align='left',alpha=1,ls=-0.02){
+  if(alpha<=0.003)return 0;ctx.save();ctx.globalAlpha*=alpha;ctx.font=`${weight} ${size}px Pretendard`;ctx.letterSpacing=(ls*size)+'px';
+  ctx.textAlign=align;ctx.fillStyle=color;ctx.fillText(s,x,y);const w=ctx.measureText(s).width;ctx.restore();return w;}
+function meas(s,size,weight,ls=-0.02){ctx.save();ctx.font=`${weight} ${size}px Pretendard`;ctx.letterSpacing=(ls*size)+'px';const w=ctx.measureText(s).width;ctx.restore();return w;}
+function rich(parts,x,y,alpha=1,align='center'){const ws=parts.map(p=>meas(p[0],p[1],p[2]));let cx=align==='center'?x-ws.reduce((a,b)=>a+b,0)/2:x;
+  parts.forEach((p,i)=>{txt(p[0],cx,y,p[1],p[2],p[3],'left',alpha);cx+=ws[i];});}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);}
+
+/* ---------- 입자 ---------- */
+const N=1300;let sd=20261116;const rnd=()=>(sd=(sd*16807)%2147483647)/2147483647;
+const PP=[...Array(N)].map((_,i)=>({u:i/N,r:[...Array(10)].map(rnd),w:[...Array(8)].map(()=>1.4+3.4*rnd()),p:[...Array(12)].map(()=>rnd()*6.283),jw:[9+17*rnd(),13+19*rnd(),7+9*rnd(),11+15*rnd()]}));
+const CX=540,RY=990;
+const ringR=t=>230+140*TL.breath(t);
+function rrPoint(s,cx,cy,w,h,r){              // 둥근 사각형 둘레 위의 점 (s: 0~1)
+  const sw=w-2*r,sh=h-2*r,arc=Math.PI*r/2,per=2*(sw+sh)+4*arc;let d=s*per;
+  const x0=cx-w/2,y0=cy-h/2;
+  if(d<sw)return [x0+r+d,y0];d-=sw;
+  if(d<arc){const a=-Math.PI/2+d/r;return [x0+w-r+r*Math.cos(a),y0+r+r*Math.sin(a)];}d-=arc;
+  if(d<sh)return [x0+w,y0+r+d];d-=sh;
+  if(d<arc){const a=d/r;return [x0+w-r+r*Math.cos(a),y0+h-r+r*Math.sin(a)];}d-=arc;
+  if(d<sw)return [x0+w-r-d,y0+h];d-=sw;
+  if(d<arc){const a=Math.PI/2+d/r;return [x0+r+r*Math.cos(a),y0+h-r+r*Math.sin(a)];}d-=arc;
+  if(d<sh)return [x0,y0+h-r-d];d-=sh;
+  const a=Math.PI+d/r;return [x0+r+r*Math.cos(a),y0+r+r*Math.sin(a)];
+}
+const curveY=u=>1260-540*Math.exp(-Math.pow((u-.45)/.23,2));
+const F={
+  swarm:(q,t)=>[CX+(300+110*q.r[0])*Math.sin(q.w[0]*t+q.p[0])*Math.cos(q.w[1]*.7*t+q.p[1]),
+                 980+(300+90*q.r[1])*Math.sin(q.w[2]*t+q.p[2])*Math.cos(q.w[3]*.6*t+q.p[3])],
+  curve:(q,t)=>[150+800*q.u,curveY(q.u)+(q.r[2]-.5)*12],
+  ring:(q,t,i)=>{const R=ringR(t)*(1+.035*((i%3)-1)),a=2*Math.PI*q.u+.05*t;return [CX+R*Math.cos(a),RY+R*Math.sin(a)];},
+  cloud:(q,t)=>{const r=250*Math.sqrt(q.r[3]),a=2*Math.PI*q.r[4]+.35*t*(.4+q.r[0]);return [CX+r*Math.cos(a)*1.15,960+r*Math.sin(a)*.8];},
+  box:(q,t)=>rrPoint(q.u,CX,960,680,240,76),
+  tangle:(q,t,i)=>{const j=i%5,v=Math.floor(i/5)/(N/5);return [90+900*v,985+(150+22*j)*Math.sin(2*Math.PI*v*(.8+.22*j)+j*1.3+.7*t*(j%2?1:-1))+38*Math.sin(2*Math.PI*v*2.3+j*2.1+.4*t)];},
+  line:(q,t)=>[150+780*q.u,1010+(q.r[2]-.5)*5],
+};
+const MUL={swarm:q=>1,curve:q=>.08+.8*q.u*q.u,ring:q=>1,cloud:q=>1.25,box:q=>.55,tangle:q=>.35,line:q=>.5};
+const SEQ=[['swarm',-9,1],['curve',T.why,1.5],['ring',T.breath,1.7],['cloud',T.label,1.3],['box',T.box,.95],['tangle',T.step,1.3],['line',T.collapse,.95],['ring',T.close,1.8]];
+function stateAt(i,t){
+  const q=PP[i];let k=0;for(let j=1;j<SEQ.length;j++)if(t>=SEQ[j][1])k=j;
+  const [fn,t0,d]=SEQ[k];let x,y,m;
+  const st=t0+q.r[6]*.4*d,p=k?E.io(seg(t,st,st+.6*d)):1;
+  const b=F[fn](q,t,i);
+  if(p<1){const a=F[SEQ[k-1][0]](q,t,i);x=lerp(a[0],b[0],p);y=lerp(a[1],b[1],p);m=lerp(MUL[SEQ[k-1][0]](q),MUL[fn](q),p);}
+  else{x=b[0];y=b[1];m=MUL[fn](q);}
+  const a=cl(TL.A(t)*m),amp=95*Math.pow(a,1.25)*(.4+1.2*q.r[7]);
+  x+=amp*(Math.sin(q.jw[0]*t+q.p[4])+.6*Math.sin(q.jw[1]*t+q.p[5]))+2.5*Math.sin(.7*t+q.p[8]);
+  y+=amp*(Math.sin(q.jw[2]*t+q.p[6])+.6*Math.sin(q.jw[3]*t+q.p[7]))+2.5*Math.sin(.6*t+q.p[9]);
+  return [x,y,a];
+}
+const HOT=[255,84,72],MID=[255,186,84],COOL=[100,227,192],ICE=[190,240,255];
+function colOf(a){const c=a>.5?MID.map((v,i)=>lerp(v,HOT[i],(a-.5)/.5)):a>.12?COOL.map((v,i)=>lerp(v,MID[i],(a-.12)/.38)):ICE.map((v,i)=>lerp(v,COOL[i],a/.12));return c.map(Math.round);}
+
+/* ---------- 배경: 심장 박동에 맞춰 붉게 뛰다가 고요해짐 ---------- */
+function beatPulse(t){let lo=0,hi=TL.beats.length-1,k=-1;while(lo<=hi){const m=(lo+hi)>>1;if(TL.beats[m]<=t){k=m;lo=m+1;}else hi=m-1;}
+  if(k<0)return 0;const d=t-TL.beats[k];return Math.exp(-d*7)+.5*Math.exp(-Math.pow((d-.16)/.05,2));}
+function bg(t){
+  const A=TL.A(t),bp=beatPulse(t);
+  ctx.fillStyle='#04060b';ctx.fillRect(0,0,W,HH);
+  let g=ctx.createRadialGradient(540,980,0,540,980,950);
+  const c=colOf(A);g.addColorStop(0,`rgba(${c[0]},${c[1]},${c[2]},${(.10+.05*bp*A).toFixed(3)})`);g.addColorStop(.6,`rgba(${c[0]},${c[1]},${c[2]},0)`);ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);
+  g=ctx.createRadialGradient(160,140,0,160,140,900);g.addColorStop(0,`rgba(70,120,255,${(.05+.11*(1-A)).toFixed(3)})`);g.addColorStop(.6,'rgba(70,120,255,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);
+  // 가장자리 붉은 맥박
+  const v=A*A*(.13+.36*bp);
+  if(v>.004){g=ctx.createRadialGradient(540,960,520,540,960,1150);g.addColorStop(0,'rgba(255,40,30,0)');g.addColorStop(1,`rgba(255,40,30,${Math.min(.45,v).toFixed(3)})`);ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);}
+}
+/* ---------- 입자 그리기 ---------- */
+function particles(t){
+  const A=TL.A(t),sh=7*A*A;
+  ctx.save();ctx.translate(sh*Math.sin(31*t)+sh*.6*Math.sin(47*t+1),sh*Math.sin(37*t+2)+sh*.5*Math.sin(53*t));
+  ctx.globalCompositeOperation='lighter';ctx.lineCap='round';
+  for(let i=0;i<N;i++){
+    const [x,y,a]=stateAt(i,t),[px,py]=stateAt(i,t-1/40);
+    const c=colOf(a),cs=`${c[0]},${c[1]},${c[2]}`,q=PP[i],sz=1.7+1.5*q.r[9];
+    const dx=x-px,dy=y-py,sp=Math.hypot(dx,dy);
+    if(sp>2.5){ctx.strokeStyle=`rgba(${cs},${Math.min(.55,.16+sp*.012).toFixed(3)})`;ctx.lineWidth=sz*1.1;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(x,y);ctx.stroke();}
+    ctx.fillStyle=`rgba(${cs},.10)`;ctx.beginPath();ctx.arc(x,y,sz*3.6,0,6.283);ctx.fill();
+    ctx.fillStyle=`rgba(${cs},.92)`;ctx.beginPath();ctx.arc(x,y,sz,0,6.283);ctx.fill();
+  }
+  ctx.restore();ctx.globalCompositeOperation='source-over';
+}
+/* ---------- 공통 UI ---------- */
+function progress(t){ctx.fillStyle='rgba(255,255,255,.08)';rr(80,136,920,6,3);ctx.fill();
+  const g=ctx.createLinearGradient(80,0,1000,0);g.addColorStop(0,RED);g.addColorStop(.45,GOLD);g.addColorStop(1,TEAL);ctx.fillStyle=g;rr(80,136,920*t/DUR,6,3);ctx.fill();}
+function chip(t,tin,tout,s,col){const a=io(t,tin,tout);if(a<=0)return;const w=meas(s,30,700,0)+56;
+  ctx.save();ctx.globalAlpha=a;ctx.fillStyle='rgba(255,255,255,.08)';rr(80,196,w,62,31);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.14)';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
+  txt(s,108,238,30,700,col,'left',a,0);}
+function head(t,tin,tout,l1,l2){const a=io(t,tin,tout);if(a<=0)return;const d=(1-E.out(seg(t,tin,tin+.6)))*34;
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.85)';ctx.shadowBlur=24;rich(l1,80,352+d,a,'left');if(l2)rich(l2,80,436+d,a,'left');ctx.restore();}
+function caption(t,tin,tout,parts,sub,y=1570){const a=io(t,tin,tout,.55,.4);if(a<=0)return;const d=(1-E.out(seg(t,tin,tin+.55)))*22;
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=26;rich(parts,540,y+d,a);if(sub)txt(sub,540,y+58+d,29,550,'#c7c7cc','center',a,-.01);ctx.restore();}
+
+/* ---------- 0. 훅 ---------- */
+function hook(t){
+  const out=1-E.in(seg(t,4.4,4.95));if(out<=0)return;
+  const L=(parts,y,tin)=>{const i=E.out(seg(t,tin,tin+.45));if(i<=0)return;ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=30;ctx.translate(0,(1-i)*30);rich(parts,540,y,i*out);ctx.restore();};
+  L([['머리가 ',72,800,INK],['하얘지는',72,850,RED],[' 순간',72,800,INK]],330,-.3);
+  L([['몸은 이미 달리고 있습니다',52,700,'#d8d8de']],412,1.1);
+  L([['침착함은 성격이 아니라 ',54,750,INK],['순서',60,850,GOLD],['입니다',54,750,INK]],1580,2.5);
+}
+/* ---------- 1. 긴장 곡선 ---------- */
+function graphAxes(t){
+  const a=io(t,T.why+.5,T.breath-.4);if(a<=0)return;
+  ctx.save();ctx.globalAlpha=a;ctx.strokeStyle='rgba(255,255,255,.4)';ctx.lineWidth=2.5;ctx.lineCap='round';
+  const p=E.io(seg(t,T.why+.5,T.why+1.5));
+  ctx.beginPath();ctx.moveTo(130,1300);ctx.lineTo(130+840*p,1300);ctx.moveTo(130,1300);ctx.lineTo(130,1300-660*p);ctx.stroke();
+  if(p>=1){ctx.beginPath();ctx.moveTo(956,1290);ctx.lineTo(972,1300);ctx.lineTo(956,1310);ctx.moveTo(120,656);ctx.lineTo(130,640);ctx.lineTo(140,656);ctx.stroke();}
+  ctx.restore();
+}
+function graph(t){
+  const a=io(t,T.why+.5,T.breath-.4);if(a<=0)return;const p=E.io(seg(t,T.why+.5,T.why+1.5));
+  ctx.save();ctx.shadowColor='rgba(0,0,0,1)';ctx.shadowBlur=22;
+  txt('긴장',972,1350,30,650,SUB,'right',a*p,0);txt('수행',150,668,30,650,SUB,'left',a*p,0);
+  const l=k=>a*E.out(seg(t,T.why+1.6+k*.5,T.why+2.1+k*.5));
+  txt('멍함',235,1362,34,700,'#9aa3b5','center',l(0));
+  txt('최고의 집중',510,640,42,800,GOLD,'center',l(1));
+  txt('실수 · 패닉',780,1376,38,800,'#ff8a80','center',l(2));txt('실수 · 패닉',780,1376,38,800,'#ff8a80','center',l(2));
+  ctx.restore();
+  // 지금 여기
+  const na=a*E.out(seg(t,T.why+3.4,T.why+3.9)),nx=150+800*.9,ny=curveY(.9);
+  if(na>0){const pu=(t*1.6)%1;ctx.strokeStyle=`rgba(255,90,79,${(na*(1-pu)).toFixed(3)})`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(nx,ny,22+50*pu,0,6.283);ctx.stroke();
+    ctx.fillStyle=`rgba(255,90,79,${na})`;ctx.beginPath();ctx.arc(nx,ny,13,0,6.283);ctx.fill();
+    ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=18;ctx.globalAlpha=na;ctx.fillStyle='rgba(20,6,6,.82)';rr(nx-98,ny-150,196,62,31);ctx.fill();ctx.strokeStyle='rgba(255,138,128,.7)';ctx.lineWidth=2;ctx.stroke();ctx.globalAlpha=1;txt('지금 여기',nx,ny-107,34,800,'#ffb3ab','center',na);ctx.restore();}
+  // 목표로 가는 화살표
+  const ap=E.io(seg(t,10.2,11.5));
+  if(ap>0){const x0=nx-10,y0=ny-158,x1=560,y1=760,cxp=820,cyp=700;
+    ctx.save();ctx.globalAlpha=a;ctx.strokeStyle=GOLD;ctx.lineWidth=5;ctx.setLineDash([14,12]);ctx.lineCap='round';ctx.beginPath();
+    for(let s=0;s<=ap;s+=.02){const x=(1-s)*(1-s)*x0+2*(1-s)*s*cxp+s*s*x1,y=(1-s)*(1-s)*y0+2*(1-s)*s*cyp+s*s*y1;s?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();ctx.setLineDash([]);
+    if(ap>=1){ctx.beginPath();ctx.moveTo(588,738);ctx.lineTo(560,760);ctx.lineTo(592,772);ctx.stroke();}
+    const gp=E.out(seg(t,11.4,11.9));if(gp>0){const pu=(t*1.2)%1;ctx.strokeStyle=`rgba(255,200,61,${(gp*(1-pu)).toFixed(3)})`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(510,720,20+46*pu,0,6.283);ctx.stroke();ctx.fillStyle=GOLD;ctx.globalAlpha=a*gp;ctx.beginPath();ctx.arc(510,720,13,0,6.283);ctx.fill();}
+    ctx.restore();}
+}
+/* ---------- 2. 숨 ---------- */
+function breathUI(t){
+  const a=io(t,T.breath+1.2,T.label-.2,.8,.5);if(a<=0)return;
+  const R=ringR(t),b=TL.breath(t);
+  let g=ctx.createRadialGradient(CX,RY,0,CX,RY,R);g.addColorStop(0,`rgba(100,227,192,${(a*(.05+.13*b)).toFixed(3)})`);g.addColorStop(1,'rgba(100,227,192,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(CX,RY,R,0,6.283);ctx.fill();
+  ctx.save();ctx.globalAlpha=a*.5;ctx.strokeStyle='rgba(255,255,255,.22)';ctx.lineWidth=1.5;ctx.setLineDash([3,10]);ctx.beginPath();ctx.arc(CX,RY,370,0,6.283);ctx.stroke();ctx.beginPath();ctx.arc(CX,RY,230,0,6.283);ctx.stroke();ctx.restore();
+  {const ia=io(t,T.breath+1.3,T.in1-.25,.5,.25);if(ia>0){ctx.save();ctx.globalAlpha=ia;ctx.fillStyle='rgba(6,8,14,.8)';rr(CX-300,RY-42,600,84,42);ctx.fill();ctx.restore();txt('원을 따라 함께 숨 쉬어 보세요',CX,RY+13,38,750,INK,'center',ia);}}
+  const PH=[[T.in1,4,'들이쉬고',BLUE],[T.ex1,6,'내쉬고',TEAL],[T.in2,4,'들이쉬고',BLUE],[T.ex2,6,'내쉬고',TEAL]];
+  for(const [t0,d,w,col] of PH){
+    const pa=io(t,t0,t0+d-.22,.28,.22);if(pa<=0)continue;
+    const k=Math.min(d,Math.floor(t-t0)+1),fr=(t-t0)%1;
+    {const dg=ctx.createRadialGradient(CX,RY+30,0,CX,RY+30,210);dg.addColorStop(0,`rgba(4,6,11,${(.78*pa*cl(TL.A(t)*1.6)).toFixed(3)})`);dg.addColorStop(1,'rgba(4,6,11,0)');ctx.fillStyle=dg;ctx.beginPath();ctx.arc(CX,RY+30,210,0,6.283);ctx.fill();}
+    ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=24;
+    txt(w,CX,RY-22,88,850,col,'center',pa,-.03);
+    txt(String(k),CX,RY+78,74,800,INK,'center',pa*(.55+.45*(1-fr)),0);ctx.restore();
+    for(let j=0;j<d;j++){const on=j<k;ctx.fillStyle=on?col:'rgba(255,255,255,.2)';ctx.globalAlpha=pa*(on?1:.8);ctx.beginPath();ctx.arc(CX+(j-(d-1)/2)*34,RY+128,on&&j===k-1?9:7,0,6.283);ctx.fill();}
+    ctx.globalAlpha=1;
+  }
+}
+/* ---------- 3. 이름 붙이기 ---------- */
+const VAGUE=[['어떡하지',330,860],['큰일났다',720,900],['왜 이러지',400,1060],['망했다',700,1050],['???',540,950]];
+function labelUI(t){
+  const fa=io(t,T.label+.5,T.box-.1,.5,.3);
+  VAGUE.forEach(([s,x,y],i)=>{const fl=.35+.65*Math.abs(Math.sin(t*5.3+i*1.7));txt(s,x+6*Math.sin(t*9+i),y+5*Math.sin(t*7+i*2),i===4?66:44,750,'#ffb0a8','center',fa*fl*.85);});
+  const ba=io(t,T.box+.6,T.step-.3,.5,.4);if(ba<=0)return;
+  ctx.save();ctx.globalAlpha=ba*.5;ctx.fillStyle='rgba(8,14,20,.8)';rr(CX-340,840,680,240,76);ctx.fill();ctx.restore();
+  txt('지금 내 감정의 이름',CX,812,28,650,SUB,'center',ba,0);
+  const full=[['나는 지금 ',INK],['불안',TEAL],['하다',INK]],total=full.reduce((s,p)=>s+p[0].length,0);
+  let n=Math.floor(total*seg(t,T.box+.9,T.box+2.3)),parts=[];
+  for(const [s,c] of full){const k=Math.min(s.length,n);if(k>0)parts.push([s.slice(0,k),70,c===TEAL?850:750,c]);n-=k;}
+  if(parts.length){const ws=parts.map(p=>meas(p[0],p[1],p[2]));const fw=full.reduce((s,p)=>s+meas(p[0],70,p[1]===TEAL?850:750),0);let x=CX-fw/2;
+    ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=20;parts.forEach((p,i)=>{txt(p[0],x,984,p[1],p[2],p[3],'left',ba);x+=ws[i];});
+    if(seg(t,T.box+.9,T.box+2.3)<1||Math.sin(t*7)>0){ctx.fillStyle=`rgba(100,227,192,${ba})`;ctx.fillRect(x+6,928,4,66);}ctx.restore();}
+}
+/* ---------- 4. 한 가지 ---------- */
+const TODO=[['메일 답장',250,800],['발표 준비',760,850],['마감',470,1130],['전화',820,1090],['보고서',300,1010],['일정 조율',600,930],['연락',170,1160]];
+function stepUI(t){
+  const ta=io(t,T.step+.7,T.collapse-.15,.5,.35);
+  ctx.save();ctx.shadowColor='rgba(0,0,0,1)';ctx.shadowBlur=18;
+  TODO.forEach(([s,x,y],i)=>{const al=ta*(.6+.4*Math.sin(t*3+i*1.3)**2),xx=x+10*Math.sin(t*2.1+i),yy=y+8*Math.sin(t*1.7+i*2);txt(s,xx,yy,42,800,'#f2f2f6','center',al);txt(s,xx,yy,42,800,'#f2f2f6','center',al);});ctx.restore();
+  const la=io(t,T.collapse+.7,T.close-.3,.5,.4);if(la<=0)return;
+  for(let k=0;k<5;k++){const x=150+780*k/4,y=1010,pa=la*E.out(seg(t,T.collapse+.8+k*.1,T.collapse+1.2+k*.1));
+    if(k===0){const pu=(t*1.1)%1;ctx.strokeStyle=`rgba(255,200,61,${(pa*(1-pu)).toFixed(3)})`;ctx.lineWidth=3.5;ctx.beginPath();ctx.arc(x,y,26+52*pu,0,6.283);ctx.stroke();
+      ctx.save();ctx.globalAlpha=pa;ctx.shadowColor=GOLD;ctx.shadowBlur=30;ctx.fillStyle=GOLD;ctx.beginPath();ctx.arc(x,y,24*E.back(cl(pa)),0,6.283);ctx.fill();ctx.restore();}
+    else{ctx.save();ctx.globalAlpha=pa*.75;ctx.fillStyle='#04060b';ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,13,0,6.283);ctx.fill();ctx.stroke();ctx.restore();}}
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=22;
+  txt('지금 할 한 가지',112,930,46,850,GOLD,'left',la*E.out(seg(t,T.collapse+1.1,T.collapse+1.6)));
+  txt('나머지는 그다음에',968,1096,32,650,SUB,'right',la*E.out(seg(t,T.collapse+1.9,T.collapse+2.4)),0);ctx.restore();
+}
+/* ---------- 5. 마무리 ---------- */
+function closing(t){
+  if(t<T.close)return;
+  const R=ringR(t);
+  let g=ctx.createRadialGradient(CX,RY,0,CX,RY,R);g.addColorStop(0,`rgba(100,227,192,${(.10*seg(t,T.close+1,T.close+2.5)).toFixed(3)})`);g.addColorStop(1,'rgba(100,227,192,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(CX,RY,R,0,6.283);ctx.fill();
+  for(let k=0;k<3;k++){const p=((t-T.close)/5+k/3)%1,al=.16*(1-p)*seg(t,T.close+1.4,T.close+2.4);ctx.strokeStyle=`rgba(150,235,215,${al.toFixed(3)})`;ctx.lineWidth=2;ctx.beginPath();ctx.arc(CX,RY,R+20+260*p,0,6.283);ctx.stroke();}
+  const W3=[['내쉬고',TEAL,T.close+1.3,-78],['이름 붙이고',INK,T.close+2.2,0],['한 가지만',GOLD,T.close+3.1,78]];
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=22;
+  for(const [s,c,ti,dy] of W3){const i=E.out(seg(t,ti,ti+.6));txt(s,CX,RY+22+dy+(1-i)*18,60,800,c,'center',i,-.03);}
+  const h=E.out(seg(t,T.close+4.1,T.close+4.8));
+  rich([['침착함은 ',66,800,INK],['성격',66,800,'#9aa3b5'],['이 아니라',66,800,INK]],540,330+(1-h)*24,h);
+  const h2=E.out(seg(t,T.close+4.6,T.close+5.3));
+  rich([['순서',92,850,GOLD],['입니다',66,800,INK]],540,440+(1-h2)*24,h2);
+  txt('오늘, 숨 4초 · 6초를 한 번만 해 보세요',540,1590,36,650,'#c7c7cc','center',E.out(seg(t,T.close+5.4,T.close+6.1)),-.01);
+  ctx.restore();
+}
+
+window.renderFrame=t=>{
+  ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+  bg(t);
+  if(t>T.why&&t<T.breath)graphAxes(t);
+  particles(t);
+  if(t>T.why&&t<T.breath)graph(t);
+  if(t>T.breath&&t<T.label)breathUI(t);
+  if(t>T.label&&t<T.step)labelUI(t);
+  if(t>T.step&&t<T.close)stepUI(t);
+  closing(t);
+  if(t<5)hook(t);
+  chip(t,T.why+.2,T.breath-.4,'먼저 알아둘 것',SUB);
+  chip(t,T.breath+.2,T.label-.4,'1 · 숨',TEAL);
+  chip(t,T.label+.2,T.step-.4,'2 · 이름',TEAL);
+  chip(t,T.step+.2,T.close-.4,'3 · 한 가지',GOLD);
+  head(t,T.why+.2,T.breath-.4,[['긴장은 ',68,800,INK],['적',68,850,RED],['이 아닙니다',68,800,INK]],[['지나칠 때가 문제입니다',68,800,INK]]);
+  head(t,T.breath+.2,T.label-.4,[['먼저, ',68,800,INK],['날숨을 길게',68,850,TEAL]]);
+  head(t,T.label+.2,T.step-.4,[['감정에 ',68,800,INK],['이름',68,850,TEAL],['을 붙입니다',68,800,INK]]);
+  head(t,T.step+.2,T.close-.4,[['다음 ',68,800,INK],['한 걸음',68,850,GOLD],['만 봅니다',68,800,INK]]);
+  caption(t,T.why+1.2,9.9,[['너무 낮아도, 너무 높아도 ',46,700,INK],['실력이 안 나옵니다',46,800,RED]],'긴장과 수행의 관계 — 여키스–도슨 법칙');
+  caption(t,10.2,T.breath-.4,[['목표는 긴장 0이 아니라 ',46,700,INK],['적당한 긴장',48,850,GOLD]]);
+  caption(t,T.in1+.1,T.in2-.3,[['코로 ',46,700,INK],['4초',48,850,BLUE],[' 들이쉬고, 입으로 ',46,700,INK],['6초',48,850,TEAL],[' 내쉽니다',46,700,INK]]);
+  caption(t,T.in2+.1,T.label-.4,[['숨을 내쉴 때 ',46,700,INK],['심장 박동은 느려집니다',46,800,TEAL]],'긴 날숨이 몸의 브레이크입니다');
+  caption(t,T.label+.5,T.box-.15,[['막연한 감정은 ',46,700,INK],['실제보다 크게',46,800,RED],[' 느껴집니다',46,700,INK]]);
+  caption(t,T.box+1.1,T.step-.4,[['말로 옮기면 ',46,700,INK],['다룰 수 있는 크기',46,800,TEAL],['가 됩니다',46,700,INK]],'감정 명명이 편도체 반응을 낮춘다는 뇌영상 연구 (Lieberman 외, 2007)');
+  caption(t,T.step+.6,T.collapse-.2,[['할 일이 ',46,700,INK],['한꺼번에',46,800,RED],[' 엉켜 보일 때',46,700,INK]]);
+  caption(t,T.collapse+.6,T.close-.4,[['전부가 아니라, ',46,700,INK],['가장 작은 한 가지',46,850,GOLD],['부터',46,700,INK]],'하나를 끝내면 다음 하나가 보입니다');
+  progress(t);
+};
+window.ready=(async()=>{await Promise.all([550,600,650,700,750,800,850].map(w=>document.fonts.load(w+' 40px Pretendard','가A1%')));await document.fonts.ready;renderFrame(0);return true;})();
+</script>
+</body>
+</html>

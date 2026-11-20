@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>해왕성의 1년</title>
+<style>
+@font-face{font-family:"Pretendard";font-weight:45 920;font-style:normal;
+  src:url("node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2") format("woff2-variations");}
+*{margin:0;padding:0}html,body{background:#000;overflow:hidden}canvas{display:block;width:1080px;height:1920px}
+</style>
+<script src="timeline.js"></script>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* =========================================================
+   해왕성의 1년 — 20초 모션그래픽
+   공전 주기는 실제 비율, 궤도 간격은 로그로 줄여 표시
+   ========================================================= */
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const W=1080,HH=1920,DUR=20;
+const cl=x=>Math.min(1,Math.max(0,x)),lerp=(a,b,s)=>a+(b-a)*s,seg=(t,a,b)=>cl((t-a)/(b-a));
+const E={out:x=>1-Math.pow(1-x,3),in:x=>x*x*x,io:x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,
+  back:x=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}};
+function kf(t,ks,ease=E.io){if(t<=ks[0][0])return ks[0][1];
+  for(let i=1;i<ks.length;i++)if(t<=ks[i][0]){const [a,va]=ks[i-1],[b,vb]=ks[i];return va+(vb-va)*ease((t-a)/(b-a));}return ks[ks.length-1][1];}
+const io=(t,a,b,din=.5,dout=.35)=>E.out(seg(t,a,a+din))*(1-E.in(seg(t,b,b+dout)));
+const INK='#f5f5f7',SUB='#a1a1a6',GOLD='#ffc83d',BLUE='#5ac8fa',NEP='#6f95ff',VIO='#bf8cff';
+function txt(s,x,y,size,weight,color,align='left',alpha=1,ls=-0.02){
+  if(alpha<=0.003)return 0;ctx.save();ctx.globalAlpha*=alpha;ctx.font=`${weight} ${size}px Pretendard`;ctx.letterSpacing=(ls*size)+'px';
+  ctx.textAlign=align;ctx.fillStyle=color;ctx.fillText(s,x,y);const w=ctx.measureText(s).width;ctx.restore();return w;}
+function meas(s,size,weight,ls=-0.02){ctx.save();ctx.font=`${weight} ${size}px Pretendard`;ctx.letterSpacing=(ls*size)+'px';const w=ctx.measureText(s).width;ctx.restore();return w;}
+function rich(parts,x,y,alpha=1,align='center'){const ws=parts.map(p=>meas(p[0],p[1],p[2]));let cx=align==='center'?x-ws.reduce((a,b)=>a+b,0)/2:x;
+  parts.forEach((p,i)=>{txt(p[0],cx,y,p[1],p[2],p[3],'left',alpha);cx+=ws[i];});}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);}
+
+/* ---------- 행성: 이름, 평균 거리(AU), 공전 주기(년), 크기, 색, 꼬리 색 ---------- */
+const P=[['수성',.387,.2408,7,['#d8d1c6','#77716a'],'226,214,196'],['금성',.723,.6152,10,['#f6e2b4','#b98a3e'],'246,214,150'],
+ ['지구',1,1,11,['#8fd2ff','#1d5ec4'],'110,190,255'],['화성',1.524,1.8808,8,['#f7a072','#9c3d1f'],'247,140,100'],
+ ['목성',5.203,11.862,23,['#f4d8b0','#a8703f'],'240,200,150'],['토성',9.537,29.457,19,['#f6e7bd','#b59658'],'240,224,170'],
+ ['천왕성',19.19,84.02,14,['#c9f6f6','#4aa6b5'],'150,230,235'],['해왕성',30.07,164.79,15,['#9ab6ff','#2a49b8'],'111,149,255']];
+const R0=78,R1=430;
+const rad=a=>R0+(R1-R0)*Math.log(a/.387)/Math.log(30.07/.387);
+const START=[.15,.62,.25,.85,.4,.08,.7,.0];
+const Y=TL.years;
+const orbAng=(i,y)=>2*Math.PI*(START[i]+y/P[i][2]);
+
+/* ---------- 카메라: 기울기(tilt), 회전(yaw), 확대(zoom), 화면 중심 ---------- */
+let CAM={tilt:1.1,yaw:0,zoom:1.3,cx:540,cy:1060};
+function camAt(t){
+  return {
+    tilt:kf(t,[[0,1.12],[2.6,1.0],[4.8,.5],[8.4,.42],[10.0,.12],[16.6,.12],[18.6,.95]]),
+    yaw:kf(t,[[0,1.15],[4.8,0],[16.6,0],[20,.45]],E.io)+.02*t,
+    zoom:kf(t,[[0,1.18],[2.6,1.1],[4.8,1.0],[16.6,1.0],[18.6,1.12]]),
+    cx:540, cy:kf(t,[[0,1000],[4.8,1040],[10.0,1030],[16.6,1030],[18.6,1180]]),
+  };
+}
+const D=1700;
+function proj(r,a){          // 궤도 평면 위 (반지름 r, 각도 a) → 화면 좌표, 깊이, 원근 배율
+  const x=r*Math.cos(a+CAM.yaw),y=r*Math.sin(a+CAM.yaw);
+  const yy=y*Math.cos(CAM.tilt),z=y*Math.sin(CAM.tilt);
+  const f=D/(D-z)*CAM.zoom;
+  return [CAM.cx+x*f,CAM.cy+yy*f,z,f];
+}
+function ringPath(r,a0,a1,steps){ctx.beginPath();for(let k=0;k<=steps;k++){const a=a0+(a1-a0)*k/steps,[x,y]=proj(r,a);k?ctx.lineTo(x,y):ctx.moveTo(x,y);}}
+
+/* ---------- 배경: 별이 시간 가속에 따라 소용돌이 ---------- */
+let s0=11;const rnd=()=>(s0=(s0*16807)%2147483647)/2147483647;
+const STARS=[...Array(260)].map(()=>({r:80+rnd()*1150,a:rnd()*6.283,s:.5+rnd()*1.6,p:rnd()*6.28}));
+const spin=t=>.015*t+.11*Math.log(1+Y(t));
+function bg(t){
+  ctx.fillStyle='#03040a';ctx.fillRect(0,0,W,HH);
+  let g=ctx.createRadialGradient(540,CAM.cy,0,540,CAM.cy,820);g.addColorStop(0,'rgba(255,160,50,.13)');g.addColorStop(.5,'rgba(255,160,50,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);
+  g=ctx.createRadialGradient(150,140,0,150,140,950);g.addColorStop(0,'rgba(70,110,255,.16)');g.addColorStop(.6,'rgba(70,110,255,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);
+  g=ctx.createRadialGradient(980,1850,0,980,1850,850);g.addColorStop(0,'rgba(150,100,255,.10)');g.addColorStop(.6,'rgba(150,100,255,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);
+  const a1=spin(t),a0=spin(Math.max(0,t-.06)),warp=Math.min(1,(a1-a0)*40);
+  for(const st of STARS){
+    const al=.2+.55*Math.abs(Math.sin(st.p+t*1.1));
+    const x=540+st.r*Math.cos(st.a+a1),y=960+st.r*Math.sin(st.a+a1)*.9;
+    if(warp>.05){ctx.strokeStyle=`rgba(255,255,255,${(al*.8).toFixed(3)})`;ctx.lineWidth=st.s;ctx.beginPath();
+      ctx.ellipse(540,960,st.r,st.r*.9,0,st.a+a1-(a1-a0)*3,st.a+a1);ctx.stroke();}
+    else{ctx.fillStyle=`rgba(255,255,255,${al.toFixed(3)})`;ctx.beginPath();ctx.arc(x,y,st.s,0,6.283);ctx.fill();}
+  }
+}
+/* ---------- 태양 ---------- */
+function sun(t){
+  const [x,y,,f]=proj(0,0),r=36*f+1.5*Math.sin(t*2.2);
+  ctx.globalCompositeOperation='lighter';
+  let g=ctx.createRadialGradient(x,y,r*.5,x,y,r*4.2);g.addColorStop(0,'rgba(255,170,50,.55)');g.addColorStop(.35,'rgba(255,120,30,.16)');g.addColorStop(1,'rgba(255,100,20,0)');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r*4.2,0,6.283);ctx.fill();ctx.globalCompositeOperation='source-over';
+  g=ctx.createRadialGradient(x-r*.3,y-r*.35,r*.1,x,y,r);g.addColorStop(0,'#fff8d6');g.addColorStop(.5,'#ffd24a');g.addColorStop(1,'#ff8c1a');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,6.283);ctx.fill();
+}
+function planetDisc(i,x,y,r,lightAng){
+  if(i===5){ctx.strokeStyle='rgba(226,205,150,.75)';ctx.lineWidth=r*.26;ctx.beginPath();ctx.ellipse(x,y,r*1.85,r*lerp(.75,.32,cl(CAM.tilt/1.2)),-.3,Math.PI*1.03,Math.PI*1.97);ctx.stroke();}
+  const lx=-Math.cos(lightAng),ly=-Math.sin(lightAng)*.6;
+  const g=ctx.createRadialGradient(x+lx*r*.45,y+ly*r*.45,r*.08,x,y,r*1.05);g.addColorStop(0,P[i][4][0]);g.addColorStop(.75,P[i][4][1]);g.addColorStop(1,'#05060c');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,6.283);ctx.fill();
+  if(i===4&&r>12){ctx.save();ctx.beginPath();ctx.arc(x,y,r,0,6.283);ctx.clip();ctx.fillStyle='rgba(130,80,35,.28)';for(const [o,h] of [[-.55,.12],[-.15,.1],[.22,.15],[.6,.1]])ctx.fillRect(x-r,y+o*r,2*r,h*r);ctx.restore();}
+  if(i===5){ctx.strokeStyle='rgba(226,205,150,.9)';ctx.lineWidth=r*.26;ctx.beginPath();ctx.ellipse(x,y,r*1.85,r*lerp(.75,.32,cl(CAM.tilt/1.2)),-.3,Math.PI*.03,Math.PI*.97);ctx.stroke();}
+}
+/* ---------- 태양계 ---------- */
+function system(t){
+  const A=E.out(seg(t,0,.7)),y=Y(t),yp=Y(Math.max(0,t-.3));
+  // 궤도선
+  P.forEach((p,i)=>{ctx.strokeStyle=`rgba(255,255,255,${((i===7?.16:.09)*A).toFixed(3)})`;ctx.lineWidth=1.5;ringPath(rad(p[1]),0,6.2832,140);ctx.stroke();});
+  // 빠르게 돌면 고리로 변하는 꼬리 (빛 더하기)
+  ctx.globalCompositeOperation='lighter';
+  P.forEach((p,i)=>{
+    const R=rad(p[1]);let da=2*Math.PI*(y-yp)/p[2];if(da<.003)return;
+    const full=cl((da-2*Math.PI*.8)/(2*Math.PI*.6));const span=Math.min(da,2*Math.PI);const a1=orbAng(i,y);
+    if(full>0){ctx.strokeStyle=`rgba(${p[5]},${(.22*full*A).toFixed(3)})`;ctx.lineWidth=16;ringPath(R,0,6.2832,160);ctx.stroke();
+      ctx.strokeStyle=`rgba(${p[5]},${(.55*full*A).toFixed(3)})`;ctx.lineWidth=3.5;ringPath(R,0,6.2832,160);ctx.stroke();}
+    const steps=Math.max(10,Math.ceil(span*24));
+    for(let k=0;k<steps;k++){const u0=k/steps,u1=(k+1)/steps;ctx.strokeStyle=`rgba(${p[5]},${(.8*u1*(1-full)*A).toFixed(3)})`;ctx.lineWidth=(i>=4?5:3.5)*(.35+.65*u1);
+      ringPath(R,a1-span*(1-u0),a1-span*(1-u1),3);ctx.stroke();}
+  });
+  ctx.globalCompositeOperation='source-over';
+  // 해왕성이 지나온 길 (발견 시점부터)
+  const na=io(t,7.0,17.4,.6,.5);
+  if(na>0){const R=rad(30.07),a0=orbAng(7,0),a1=orbAng(7,y);
+    ctx.save();ctx.globalAlpha=na;ctx.globalCompositeOperation='lighter';
+    ctx.strokeStyle='rgba(111,149,255,.35)';ctx.lineWidth=26;ctx.lineCap='round';ringPath(R,a0,Math.max(a0+.004,a1),Math.max(4,Math.ceil((a1-a0)*40)));ctx.stroke();
+    ctx.strokeStyle='rgba(150,180,255,.95)';ctx.lineWidth=8;ringPath(R,a0,Math.max(a0+.004,a1),Math.max(4,Math.ceil((a1-a0)*40)));ctx.stroke();ctx.restore();
+    const [sx,sy]=proj(R,a0),[cx,cy]=proj(0,0);
+    ctx.save();ctx.globalAlpha=na*.7;ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.setLineDash([5,9]);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(sx,sy);ctx.stroke();ctx.restore();
+    txt('1846년 출발점',sx-22,sy+40,24,700,'#c9d6ff','right',na*(1-seg(t,9.6,10.2))+na*seg(t,15.0,15.6)*(1-seg(t,17,17.4)),0);
+  }
+  // 행성과 태양을 깊이 순서로
+  const items=P.map((p,i)=>{const a=orbAng(i,y),[x,yy,z,f]=proj(rad(p[1]),a);return {i,x,y:yy,z,f,a};});
+  const [sx,sy,sz]=proj(0,0);items.push({sun:true,z:sz});
+  items.sort((a,b)=>a.z-b.z);
+  for(const it of items){
+    if(it.sun){sun(t);continue;}
+    const i=it.i,pulse=i===7?1+.4*Math.sin(Math.PI*seg(t,15.75,16.4))+.3*Math.sin(Math.PI*seg(t,13.6,14.1)):1;
+    const r=P[i][3]*it.f*pulse;
+    ctx.globalAlpha=A;planetDisc(i,it.x,it.y,r,Math.atan2(it.y-sy,it.x-sx));ctx.globalAlpha=1;
+    const la=A*(i===7?Math.max(io(t,.5,9.6),io(t,13.5,17.2)):i===2?io(t,3.0,9.6):io(t,.8,4.4))*.95;
+    if(la>0)txt(P[i][0],it.x,it.y-r-12,i===7||i===2?30:24,750,i===7?'#b8caff':i===2?'#a6dcff':'#c7c7cc','center',la,0);
+  }
+  // 시작 장면: 해왕성 신호 고리
+  for(const tp of [.55,1.55]){const q=seg(t,tp,tp+1.1);if(q>0&&q<1){const it=items.find(o=>o.i===7);ctx.strokeStyle=`rgba(143,176,255,${(.85*(1-q)).toFixed(3)})`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(it.x,it.y,18+70*E.out(q),0,6.283);ctx.stroke();}}
+  // 보이저 2호 방문 순간: 해왕성 주변 고리
+  const vp=seg(t,13.62,14.5);if(vp>0&&vp<1){const it=items.find(o=>o.i===7);ctx.strokeStyle=`rgba(255,255,255,${(.9*(1-vp)).toFixed(3)})`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(it.x,it.y,20+60*E.out(vp),0,6.283);ctx.stroke();}
+  // 완주 순간: 궤도 전체가 번쩍
+  const fp=seg(t,15.78,16.9);if(fp>0&&fp<1){ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle=`rgba(170,195,255,${(.8*(1-fp)).toFixed(3)})`;ctx.lineWidth=6+40*E.out(fp);ringPath(rad(30.07),0,6.2832,180);ctx.stroke();ctx.restore();}
+}
+/* ---------- 상단 정보 ---------- */
+function hud(t){
+  const a=io(t,2.5,17.3),y=Y(t);if(a<=0)return;
+  const cal=TL.START+y,yr=Math.floor(cal),mo=Math.floor((cal%1)*12)+1,done=y>=TL.NEP-1e-3;
+  txt('달력',80,232,30,650,SUB,'left',a,0);
+  const showMo=t<8.7||done;
+  const w=txt(yr+'년',80,330,92,850,done?GOLD:INK,'left',a,-.04);
+  if(showMo)txt(mo+'월',80+w+14,330,48,750,done?GOLD:SUB,'left',a,-.02);
+  txt('해왕성 공전',1000,232,30,650,SUB,'right',a,0);
+  const pr=Math.min(1,y/TL.NEP);
+  txt(pr<.1?(pr*360).toFixed(1)+'°':Math.round(pr*100)+'%',1000,330,92,850,done?GOLD:'#8fb0ff','right',a,-.04);
+  ctx.save();ctx.globalAlpha=a;ctx.fillStyle='rgba(255,255,255,.1)';rr(80,362,920,10,5);ctx.fill();
+  const g=ctx.createLinearGradient(80,0,1000,0);g.addColorStop(0,'#3f6dff');g.addColorStop(1,done?GOLD:'#a9c0ff');ctx.fillStyle=g;rr(80,362,Math.max(10,920*pr),10,5);ctx.fill();ctx.restore();
+  // 시간 속도
+  if(t>8.7&&t<15.9){const rate=(Y(t+.05)-Y(t-.05))/.1,sa=a*io(t,8.75,15.6);
+    rich([['1초에 ',30,650,SUB],[rate<10?rate.toFixed(1)+'년':Math.round(rate)+'년',34,850,'#ffd27a'],['씩 흐르는 중  ·  지구 ',30,650,SUB],[Math.floor(y+1e-6)+'바퀴',34,850,'#a6dcff']],540,428,sa);}
+  // 역사 사건 칩
+  TL.EVENTS.forEach((e,k)=>{const te=[11.31,12.87,13.63][k],ca=a*E.out(seg(t,te,te+.35))*(1-seg(t,16.6,17.1));if(ca<=0)return;
+    const x=80+k*310,yc=480,pop=1+.12*Math.sin(Math.PI*seg(t,te,te+.4));
+    ctx.save();ctx.globalAlpha=ca;ctx.translate(x+146,yc+30);ctx.scale(pop,pop);ctx.translate(-x-146,-yc-30);
+    ctx.fillStyle='rgba(16,18,30,.82)';rr(x,yc,292,60,30);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.16)';ctx.lineWidth=1.5;ctx.stroke();
+    txt(e[1],x+22,yc+40,28,850,'#ffd27a','left',1,0);txt(e[2],x+96,yc+40,26,650,INK,'left',1,-.02);ctx.restore();});
+}
+/* ---------- 자막 ---------- */
+function texts(t){
+  const L=(parts,y,tin,tout,sub)=>{const a=io(t,tin,tout);if(a<=0)return;const d=(1-E.out(seg(t,tin,tin+.5)))*26;ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=26;
+    rich(parts,540,y+d,a);if(sub)txt(sub,540,y+58+d,31,550,'#c7c7cc','center',a,-.01);ctx.restore();};
+  // 훅
+  const h=io(t,.05,2.55);
+  if(h>0){ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=30;const d=(1-E.out(seg(t,.05,.6)))*30;
+    rich([['해왕성의 ',80,800,INK],['1년',80,850,'#8fb0ff'],['은',80,800,INK]],540,300+d,h);
+    rich([['지구의 몇 년일까요?',66,750,INK]],540,396+d,E.out(seg(t,.5,1.0))*h);ctx.restore();}
+  L([['지구가 ',48,750,INK],['1바퀴',48,850,BLUE],[' 도는 동안',48,750,INK]],1560,3.0,6.85);
+  L([['해왕성은 겨우 ',48,750,INK],['2.2°',50,850,'#8fb0ff']],1560,7.35,8.45,'한 바퀴의 1/165');
+  L([['이제 시간을 빠르게',48,750,INK]],1560,8.85,10.9,'안쪽 행성들은 빛의 고리가 됩니다');
+  L([['사람의 역사가 지나가는 동안',48,750,INK]],1560,11.4,15.5,'해왕성은 아직 한 바퀴를 다 돌지 못했습니다');
+  L([['164.8년',60,850,GOLD],['  만에 한 바퀴',50,750,INK]],1560,15.8,17.2);
+  // 결말
+  const ea=E.out(seg(t,17.3,17.9));
+  if(ea>0){const g=ctx.createLinearGradient(0,600,0,1500);g.addColorStop(0,'rgba(3,4,10,0)');g.addColorStop(.5,`rgba(3,4,10,${(.72*ea).toFixed(3)})`);g.addColorStop(1,'rgba(3,4,10,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);}
+  const B=(parts,y,tin)=>{const i=E.out(seg(t,tin,tin+.5));if(i<=0)return;ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=36;ctx.translate(540,y+(1-i)*24);rich(parts,0,0,i);ctx.restore();};
+  B([['1846년',84,850,'#8fb0ff'],['에 발견된 해왕성은',60,750,INK]],900,17.45);
+  B([['2011년',84,850,GOLD],['에야',60,750,INK]],1010,17.95);
+  B([['첫 바퀴를 마쳤습니다',60,750,INK]],1100,18.3);
+  txt('궤도 간격은 줄여서 표시 · 공전 주기는 실제 비율',540,1690,24,550,'#8e8e93','center',io(t,3,17.2)*.9,0);
+}
+function vignette(){const g=ctx.createRadialGradient(540,960,600,540,960,1250);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);}
+function progress(t){ctx.fillStyle='rgba(255,255,255,.08)';rr(80,136,920,6,3);ctx.fill();
+  const g=ctx.createLinearGradient(80,0,1000,0);g.addColorStop(0,BLUE);g.addColorStop(.5,VIO);g.addColorStop(1,GOLD);ctx.fillStyle=g;rr(80,136,920*t/DUR,6,3);ctx.fill();}
+window.renderFrame=t=>{ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;CAM=camAt(t);bg(t);system(t);vignette();hud(t);texts(t);progress(t);};
+window.ready=(async()=>{await Promise.all([550,600,650,700,750,800,850].map(w=>document.fonts.load(w+' 40px Pretendard','가A1%')));await document.fonts.ready;renderFrame(0);return true;})();
+</script>
+</body>
+</html>
