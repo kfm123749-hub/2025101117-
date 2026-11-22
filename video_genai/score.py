@@ -9,7 +9,7 @@
 #  반전 : 한 박 쉬고 큰 화음, 끝은 첫 장면의 8비트 음으로 이어져 반복 재생이 자연스럽게
 import numpy as np, wave, sys, json, math
 from scipy.signal import butter, lfilter, fftconvolve
-ev = json.load(open('events.json'))
+ev = json.load(open(sys.argv[2] if len(sys.argv) > 2 else 'events.json'))   # 영어판은 events_en.json
 sr = 44100; D = 60.0; N = int(sr * D); t = np.arange(N) / sr
 rng = np.random.default_rng(2026)
 out = np.zeros((2, N)); wet = np.zeros((2, N))

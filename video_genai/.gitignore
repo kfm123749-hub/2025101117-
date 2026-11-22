@@ -1,4 +1,6 @@
 node_modules
 *.wav
 *_무음.mp4
+*_silent.mp4
 events.json
+events_en.json
