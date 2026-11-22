@@ -31,6 +31,10 @@ app.use('/users', require('./routes/userRoutes'));
 app.use(require('./middlewares/errorHandler'));
 
 // ⑥ 서버 시작
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;

@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>12주차 웹프로그래밍 실습 결과</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Atkinson Hyperlegible Next", "Malgun Gothic", system-ui, sans-serif;
+      color: #18312a;
+      background: #edf3ef;
+    }
+    * { box-sizing: border-box; }
+    main { width: min(62rem, 100% - 2rem); margin: clamp(1.5rem, 5vw, 3.5rem) auto; }
+    header { margin-bottom: 1.65rem; }
+    h1 { margin: 0 0 .55rem; font-size: clamp(1.75rem, 4.5vw, 2.6rem); line-height: 1.15; }
+    h2, p { margin: 0; }
+    header p { color: #435d52; }
+    header nav { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 1rem; }
+    a { color: #205d49; text-underline-offset: 3px; }
+    a:focus-visible, button:focus-visible { outline: 2px solid #276a56; outline-offset: 3px; }
+    nav a, button { font: inherit; border-radius: .55rem; padding: .5rem .75rem; }
+    nav a { padding-left: 0; }
+    button { cursor: pointer; border: 1px solid #c4d7ca; background: #fff; color: #205d49; }
+    button:disabled { cursor: wait; color: #647b70; }
+    section { min-width: 0; background: #fff; border: 1px solid #cfdfd4; border-radius: .85rem; padding: clamp(.8rem, 3vw, 1.35rem); margin-bottom: .9rem; }
+    h2 { margin-bottom: .7rem; font-size: 1.15rem; }
+    .case { display: grid; grid-template-columns: minmax(0, 13rem) minmax(0, 1fr); align-items: start; gap: .55rem 1rem; padding: .55rem 0; }
+    .case + .case { border-top: 1px solid #e2ebe5; }
+    .request { margin-top: .45rem; overflow-wrap: anywhere; font: .87rem ui-monospace, monospace; }
+    .output { min-width: 0; display: flex; align-items: baseline; gap: .6rem; }
+    .status { flex-shrink: 0; border-radius: .35rem; padding: .3rem .45rem; color: #1b4e3a; background: #dfefe5; font: 700 .78rem ui-monospace, monospace; }
+    .status[data-state="error"] { color: #8d2c27; background: #f8e5e3; }
+    pre { width: 100%; margin: 0; padding: .45rem .6rem; border-radius: .45rem; background: #f0f5f2; white-space: pre-wrap; overflow-wrap: anywhere; font: .87rem/1.45 ui-monospace, monospace; }
+    iframe { width: 100%; height: 8rem; margin-top: .5rem; border-radius: .45rem; border: 1px solid #d8e5db; }
+    @media (max-width: 550px) { .case { grid-template-columns: minmax(0, 1fr); } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>12주차 웹프로그래밍 실습 결과</h1>
+      <p>각 요청의 HTTP 상태 코드와 서버 응답을 표시합니다.</p>
+      <nav aria-label="실습 도구">
+        <a href="https://github.com/kfm123749-hub/2025101117-/blob/main/README.md">실습 소스 코드</a>
+        <button id="refresh" type="button">다시 요청</button>
+      </nav>
+    </header>
+
+    <section aria-labelledby="basic">
+      <h2 id="basic">1차시 · Node.js HTTP 응답</h2>
+      <div class="case" data-url="/node/response" data-status="200">
+        <a class="request" href="/node/response">GET /</a>
+        <div class="output"><span class="status">대기</span><pre>요청 준비 중</pre></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="routing">
+      <h2 id="routing">2차시 · HTML 파일과 라우팅</h2>
+      <div class="case" data-url="/node/html" data-status="200" data-html>
+        <a class="request" href="/node/html">GET / · HTML 파일</a>
+        <div>
+          <div class="output"><span class="status">대기</span><pre>요청 준비 중</pre></div>
+          <iframe src="/node/html" title="Node.js 서버가 전송한 HTML 미리보기"></iframe>
+        </div>
+      </div>
+      <div class="case" data-url="/node/routes/home" data-status="200">
+        <a class="request" href="/node/routes/home">GET /home</a>
+        <div class="output"><span class="status">대기</span><pre>요청 준비 중</pre></div>
+      </div>
+      <div class="case" data-url="/node/routes/about" data-status="200">
+        <a class="request" href="/node/routes/about">GET /about</a>
+        <div class="output"><span class="status">대기</span><pre>요청 준비 중</pre></div>
+      </div>
+      <div class="case" data-url="/node/routes/contact" data-status="404">
+        <a class="request" href="/node/routes/contact">GET /contact</a>
+        <div class="output"><span class="status">대기</span><pre>요청 준비 중</pre></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="express">
+      <h2 id="express">3차시 · Express 라우팅</h2>
+      <div class="case" data-url="/express/users" data-status="200">
+        <a class="request" href="/express/users">GET /users</a>
+        <div class="output"><span class="status">대기</span><pre>요청 준비 중</pre></div>
+      </div>
+      <div class="case" data-url="/express/users/apple" data-status="200">
+        <a class="request" href="/express/users/apple">GET /users/apple</a>
+        <div class="output"><span class="status">대기</span><pre>요청 준비 중</pre></div>
+      </div>
+      <div class="case" data-url="/express/json" data-status="200">
+        <a class="request" href="/express/json">GET /json</a>
+        <div class="output"><span class="status">대기</span><pre>요청 준비 중</pre></div>
+      </div>
+    </section>
+  </main>
+  <script>
+    const refresh = document.querySelector('#refresh');
+
+    async function showResponse(example) {
+      const status = example.querySelector('.status');
+      const output = example.querySelector('pre');
+      status.textContent = '요청 중';
+      status.removeAttribute('data-state');
+
+      try {
+        const response = await fetch(example.dataset.url, { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+        const body = await response.text();
+        const document = example.hasAttribute('data-html') && response.ok
+          ? new DOMParser().parseFromString(body, 'text/html') : null;
+        output.textContent = document ? document.querySelector('h1')?.textContent || document.title : body;
+        status.textContent = response.status;
+        if (String(response.status) !== example.dataset.status) status.dataset.state = 'error';
+      } catch {
+        status.textContent = '연결 오류';
+        status.dataset.state = 'error';
+        output.textContent = '서버 응답을 받지 못했습니다.';
+      }
+    }
+
+    async function runExamples() {
+      refresh.disabled = true;
+      await Promise.all(Array.from(document.querySelectorAll('[data-url]'), showResponse));
+      refresh.disabled = false;
+    }
+
+    refresh.addEventListener('click', runExamples);
+    runExamples();
+  </script>
+</body>
+</html>
