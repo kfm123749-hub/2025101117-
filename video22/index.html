@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>22번 60초 풀이</title>
+<link rel="stylesheet" href="node_modules/katex/dist/katex.min.css">
+<script src="node_modules/katex/dist/katex.min.js"></script>
+<style>
+@font-face{font-family:"Pretendard";font-weight:45 920;font-style:normal;
+  src:url("node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2") format("woff2-variations");}
+:root{
+  --bg:#07080c; --ink:#f5f5f7; --sub:#a1a1a6;
+  --blue:#5ac8fa; --violet:#bf8cff; --orange:#ff9f0a; --green:#30d158; --line:rgba(255,255,255,.1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#000;overflow:hidden}
+#stage{position:relative;width:1080px;height:1920px;background:var(--bg);overflow:hidden;
+  font-family:"Pretendard",sans-serif;color:var(--ink);letter-spacing:-0.02em}
+#glow1,#glow2{position:absolute;width:1700px;height:1700px;border-radius:50%;left:0;top:0;will-change:transform}
+#glow1{background:radial-gradient(circle,rgba(90,200,250,.17),rgba(90,200,250,0) 62%)}
+#glow2{background:radial-gradient(circle,rgba(191,140,255,.15),rgba(191,140,255,0) 62%)}
+.abs{position:absolute;left:0;top:0;opacity:0;will-change:transform,opacity}
+.katex{font-size:1em}
+
+/* progress */
+#prog{position:absolute;left:80px;top:136px;width:920px;height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+#progFill{height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,var(--blue),var(--violet),var(--orange))}
+
+/* top */
+.chip{left:80px;top:196px;height:62px;padding:0 28px;border-radius:31px;display:flex;align-items:center;
+  font-size:30px;font-weight:700;letter-spacing:0;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.14)}
+.head{left:80px;top:286px;width:920px;font-size:70px;line-height:1.22;font-weight:750;letter-spacing:-0.035em}
+.head em{font-style:normal}
+
+/* graph */
+#gw{position:absolute;left:80px;top:490px;width:920px;height:920px;transform-origin:50% 0;opacity:0}
+#card{position:absolute;inset:0;border-radius:48px;background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.02));
+  border:1.5px solid var(--line)}
+#gw svg{position:absolute;inset:0}
+.lab{position:absolute;left:0;top:0;opacity:0;font-size:37px;white-space:nowrap;font-weight:600;
+  text-shadow:0 0 14px #07080c,0 0 14px #07080c,0 0 6px #07080c}
+.note{position:absolute;right:30px;bottom:22px;font-size:21px;color:var(--sub);opacity:0;letter-spacing:0}
+
+/* bottom */
+.row{left:80px;width:920px;display:flex;align-items:center;gap:20px;font-size:35px;font-weight:500;color:var(--ink)}
+.num{flex:none;width:46px;height:46px;border-radius:23px;display:flex;align-items:center;justify-content:center;
+  font-size:25px;font-weight:800;color:#07080c;letter-spacing:0}
+.ctr{left:80px;width:920px;text-align:center}
+.small{font-size:27px;color:var(--sub);font-weight:500;letter-spacing:-0.01em}
+.box{display:inline-block;padding:20px 46px;border-radius:32px;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.16)}
+
+/* hook & final */
+.big22{left:0;width:1080px;text-align:center;font-size:520px;font-weight:850;line-height:1;letter-spacing:-0.06em;
+  background:linear-gradient(135deg,#fff 10%,#5ac8fa 55%,#bf8cff 95%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hookline{left:0;width:1080px;text-align:center;font-size:78px;font-weight:750;letter-spacing:-0.04em}
+.ans{left:0;width:1080px;text-align:center;font-size:400px;font-weight:850;line-height:1;letter-spacing:-0.05em;
+  font-variant-numeric:tabular-nums;
+  background:linear-gradient(135deg,#fff 5%,#ffd27a 45%,#ff9f0a 95%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pill{display:inline-flex;align-items:center;gap:18px;height:104px;padding:0 48px;border-radius:52px;font-size:50px;font-weight:750;
+  background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.16)}
+.pill i{font-style:normal;color:var(--sub);font-weight:500}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="glow1"></div><div id="glow2"></div>
+  <div id="prog"><div id="progFill"></div></div>
+  <div id="ui"></div>
+  <div id="gw">
+    <div id="card"></div>
+    <svg id="svg" width="920" height="920" viewBox="0 0 920 920"></svg>
+    <div id="labs"></div>
+    <div class="note" id="note">이해를 위한 약도 · 실제 좌표 비율과 다름</div>
+  </div>
+</div>
+<script>
+/* ---------- helpers ---------- */
+const DUR=60;
+const C={blue:'#5ac8fa',violet:'#bf8cff',orange:'#ff9f0a',green:'#30d158',ink:'#f5f5f7',sub:'#a1a1a6'};
+const cl=x=>Math.min(1,Math.max(0,x));
+const seg=(t,a,b)=>cl((t-a)/(b-a));
+const lerp=(a,b,s)=>a+(b-a)*s;
+const E={
+  lin:x=>x,
+  out:x=>1-Math.pow(1-x,3),
+  in:x=>x*x*x,
+  io:x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,
+  expo:x=>x>=1?1:1-Math.pow(2,-10*x),
+  back:x=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}
+};
+function kf(t,ks,ease=E.io){
+  if(t<=ks[0][0])return ks[0][1];
+  for(let i=1;i<ks.length;i++){ if(t<=ks[i][0]){const [a,va]=ks[i-1],[b,vb]=ks[i];return va+(vb-va)*ease((t-a)/(b-a));} }
+  return ks[ks.length-1][1];
+}
+function mix(c1,c2,s){
+  const p=c=>[1,3,5].map(i=>parseInt(c.slice(i,i+2),16));
+  const a=p(c1),b=p(c2);return 'rgb('+a.map((v,i)=>Math.round(lerp(v,b[i],s))).join(',')+')';
+}
+const acts=[];const act=f=>acts.push(f);
+const tex=(s,display=false)=>katex.renderToString(s,{throwOnError:true,displayMode:display,
+  macros:{'\\cb':'\\textcolor{5ac8fa}{#1}','\\cv':'\\textcolor{bf8cff}{#1}','\\co':'\\textcolor{ff9f0a}{#1}','\\cg':'\\textcolor{30d158}{#1}'}});
+const T=s=>s.replace(/\$([^$]+)\$/g,(_,m)=>tex(m));
+const ui=document.getElementById('ui');
+function el(cls,html,style={}){
+  const d=document.createElement('div');d.className='abs '+cls;d.innerHTML=T(html);Object.assign(d.style,style);ui.appendChild(d);return d;
+}
+/* fade/slide in & out */
+function vis(d,tin,tout=1e9,o={}){
+  const {dy=34,din=.65,dout=.45,sc=1,max=1}=o;
+  act(t=>{
+    const i=E.out(seg(t,tin,tin+din)),u=E.in(seg(t,tout,tout+dout));
+    d.style.opacity=(i*(1-u)*max).toFixed(4);
+    d.style.transform=`translateY(${((1-i)*dy-u*dy*.6).toFixed(2)}px) scale(${lerp(sc,1,i).toFixed(4)})`;
+  });
+  return d;
+}
+
+/* ---------- top chips & headlines ---------- */
+function scene(chipTxt,color,headHtml,tin,tout){
+  const c=el('chip',chipTxt,{color});vis(c,tin,tout,{dy:16});
+  const h=el('head',headHtml);vis(h,tin+.12,tout,{dy:40});
+}
+const S={s1:4.7,s2:14.1,s3:24.5,s4:40,s5:51.4};
+scene('문제 읽기',C.ink,'조건을 <em style="color:#5ac8fa">그림</em>으로 옮기면',S.s1,S.s2-.5);
+scene('관찰 ①',C.violet,'$y=x$ 대칭은<br><em style="color:#bf8cff">역함수</em>로 읽는다',S.s2,S.s3-.5);
+scene('관찰 ②',C.orange,'두 곡선은 원점 기준<br><em style="color:#ff9f0a">2배 닮음</em>',S.s3,S.s4-.5);
+scene('계산',C.green,'<em style="color:#30d158">중점</em> 조건에 대입',S.s4,S.s5-.2);
+
+/* ---------- hook ---------- */
+const hChip=el('chip','수학 영역 · 4점',{left:'50%',top:'480px',marginLeft:'-140px',width:'280px',justifyContent:'center'});
+vis(hChip,.15,3.9,{dy:20});
+const h22=el('big22','22',{top:'560px'});
+act(t=>{
+  const i=E.back(seg(t,.25,1.15)),u=E.in(seg(t,3.95,4.5));
+  h22.style.opacity=(E.out(seg(t,.25,.7))*(1-u)).toFixed(4);
+  h22.style.transform=`scale(${(lerp(.6,1,i)*lerp(1,1.25,u)).toFixed(4)})`;
+});
+const hl1=el('hookline','계산부터 하지 마세요',{top:'1170px',color:C.sub});vis(hl1,1.35,3.95);
+const hl2=el('hookline','<span style="color:#5ac8fa">관찰 두 개</span>면 끝납니다',{top:'1280px'});vis(hl2,2.3,4.05);
+
+/* ---------- graph ---------- */
+const W=920,xmin=-.6,ymin=-.6,span=6.2,K=W/span;
+const X=x=>(x-xmin)*K, Y=y=>W-(y-ymin)*K;
+const g=u=>(Math.pow(16,u)-2)/8;
+const b0=1.1,a0=g(b0);
+const PA=[a0,b0],PAp=[b0,a0],PB=[2*b0,2*a0],PM=[(a0+2*b0)/2,(b0+2*a0)/2];
+const NS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('svg');
+function S_(tag,attrs,parent=svg){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);parent.appendChild(e);return e;}
+const defs=S_('defs',{});
+const cp=S_('clipPath',{id:'clip'},defs);S_('rect',{x:1,y:1,width:W-2,height:W-2,rx:47},cp);
+const G0=S_('g',{'clip-path':'url(#clip)'});
+const L=(parent,attrs)=>S_('line',attrs,parent);
+const dpath=pts=>pts.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(2)+' '+Y(p[1]).toFixed(2)).join('');
+const US=[];for(let i=0;i<=220;i++)US.push(-.8+2.25*i/220);
+
+/* grid + axes */
+const grid=S_('g',{opacity:0},G0);
+for(let i=-0;i<=5;i++){
+  if(i!==0){L(grid,{x1:X(i),y1:0,x2:X(i),y2:W,stroke:'#fff','stroke-opacity':.055,'stroke-width':1.5});
+            L(grid,{x1:0,y1:Y(i),x2:W,y2:Y(i),stroke:'#fff','stroke-opacity':.055,'stroke-width':1.5});}
+}
+const axX=L(G0,{x1:0,y1:Y(0),x2:0,y2:Y(0),stroke:'#fff','stroke-opacity':.55,'stroke-width':2.5});
+const axY=L(G0,{x1:X(0),y1:W,x2:X(0),y2:W,stroke:'#fff','stroke-opacity':.55,'stroke-width':2.5});
+act(t=>{
+  grid.setAttribute('opacity',E.out(seg(t,S.s1+.1,S.s1+1)));
+  const p=E.io(seg(t,S.s1+.1,S.s1+1.2));
+  axX.setAttribute('x2',W*p);axY.setAttribute('y2',W-W*p);
+});
+const gw=document.getElementById('gw');
+act(t=>{
+  const i=E.out(seg(t,S.s1-.1,S.s1+.6));
+  const sc=kf(t,[[S.s4,1],[S.s4+1,.62]]);
+  const out=E.in(seg(t,S.s5-.2,S.s5+.4));
+  gw.style.opacity=(i*(1-out)).toFixed(4);
+  gw.style.transform=`translateY(${((1-i)*60+kf(t,[[S.s4,0],[S.s4+1,-20]])-out*40).toFixed(2)}px) scale(${sc.toFixed(4)})`;
+});
+const note=document.getElementById('note');
+act(t=>{note.style.opacity=(.75*E.out(seg(t,S.s1+1,S.s1+1.8))*(1-seg(t,S.s4,S.s4+.5))).toFixed(3)});
+
+/* y=x */
+const yx=L(G0,{x1:X(-.6),y1:Y(-.6),x2:X(-.6),y2:Y(-.6),stroke:'#fff','stroke-width':2.5,'stroke-dasharray':'10 12',opacity:0});
+act(t=>{
+  const p=E.io(seg(t,S.s2+.3,S.s2+1.3));
+  yx.setAttribute('x2',X(lerp(-.6,5.6,p)));yx.setAttribute('y2',Y(lerp(-.6,5.6,p)));
+  yx.setAttribute('opacity',p>0?kf(t,[[S.s3,.6],[S.s3+.8,.16]]):0);
+});
+/* line OB */
+const obEnd=[5.6*b0/a0,5.6];
+const ob=L(G0,{x1:X(0),y1:Y(0),x2:X(0),y2:Y(0),stroke:'#fff','stroke-width':3,'stroke-linecap':'round',opacity:0});
+act(t=>{
+  const p=E.io(seg(t,10,11.2));
+  ob.setAttribute('x2',X(obEnd[0]*p));ob.setAttribute('y2',Y(obEnd[1]*p));
+  const pulse=Math.sin(Math.PI*seg(t,21,22));
+  ob.setAttribute('stroke-width',3+4*pulse);
+  ob.setAttribute('opacity',p>0?kf(t,[[10,.75],[S.s4,.75],[S.s4+.8,.25]])+.25*pulse:0);
+});
+/* dilation rays */
+const rayU=[.5,.8,.95,1.15];
+const rays=rayU.map(u=>L(G0,{x1:X(0),y1:Y(0),x2:X(0),y2:Y(0),stroke:C.orange,'stroke-width':2,'stroke-dasharray':'3 9','stroke-linecap':'round',opacity:0}));
+act(t=>{
+  const p=E.io(seg(t,30.1,30.9)),o=.55*(1-seg(t,34.6,35.4));
+  rays.forEach((r,i)=>{const u=rayU[i];r.setAttribute('x2',X(2*u*p));r.setAttribute('y2',Y(2*g(u)*p));r.setAttribute('opacity',p>0?o:0);});
+});
+
+/* curves */
+function curve(color){return S_('path',{fill:'none',stroke:color,'stroke-width':5.5,'stroke-linecap':'round','stroke-linejoin':'round',pathLength:1,'stroke-dasharray':'1 1','stroke-dashoffset':1,opacity:0},G0);}
+const logPts=US.map(u=>[g(u),u]), gPts=US.map(u=>[u,g(u)]), fPts=US.map(u=>[2*u,2*g(u)]);
+const pLog=curve(C.blue);pLog.setAttribute('d',dpath(logPts));
+const pF=curve(C.orange);pF.setAttribute('d',dpath(fPts));
+const pG=S_('path',{fill:'none',stroke:C.violet,'stroke-width':5.5,'stroke-linecap':'round','stroke-linejoin':'round',opacity:0},G0);
+const pSc=S_('path',{fill:'none',stroke:C.violet,'stroke-width':5.5,'stroke-linecap':'round','stroke-linejoin':'round',opacity:0},G0);
+const dim4=[[S.s4,1],[S.s4+.8,.3]];
+act(t=>{
+  // log curve
+  let p=E.io(seg(t,6,7.6));
+  pLog.setAttribute('stroke-dashoffset',1-p);
+  pLog.setAttribute('opacity',p>0?kf(t,[[S.s3,1],[S.s3+.8,.25]]):0);
+  // f curve
+  p=E.io(seg(t,8,9.6));
+  pF.setAttribute('stroke-dashoffset',1-p);
+  const flash=Math.sin(Math.PI*seg(t,33.5,34.5));
+  pF.setAttribute('stroke-width',5.5+7*flash);
+  pF.setAttribute('opacity',p>0?kf(t,[[S.s2,1],[S.s2+.8,.3],[S.s3,.3],[S.s3+.8,1],...dim4]):0);
+  // flip -> g curve
+  const s=E.io(seg(t,15.8,18.2));
+  if(t>=15.8){
+    pG.setAttribute('d',dpath(logPts.map(q=>[lerp(q[0],q[1],s),lerp(q[1],q[0],s)])));
+    pG.setAttribute('stroke',mix(C.blue,C.violet,s));
+    pG.setAttribute('opacity',kf(t,[[15.8,0],[16.1,1],...dim4]));
+  } else pG.setAttribute('opacity',0);
+  // scaled copy
+  const k=1+E.io(seg(t,30.9,33.6));
+  if(t>=30.4){
+    pSc.setAttribute('d',dpath(gPts.map(q=>[k*q[0],k*q[1]])));
+    pSc.setAttribute('stroke',mix(C.violet,C.orange,k-1));
+    pSc.setAttribute('opacity',kf(t,[[30.4,0],[30.9,1],[34.3,1],[35,0]]));
+  } else pSc.setAttribute('opacity',0);
+});
+
+/* segment AB + connector */
+const segAB=L(G0,{x1:X(PA[0]),y1:Y(PA[1]),x2:X(PA[0]),y2:Y(PA[1]),stroke:C.green,'stroke-width':4,'stroke-linecap':'round',opacity:0});
+const conn=L(G0,{x1:X(PA[0]),y1:Y(PA[1]),x2:X(PA[0]),y2:Y(PA[1]),stroke:C.violet,'stroke-width':2.5,'stroke-dasharray':'4 9','stroke-linecap':'round',opacity:0});
+const segOp=t=>kf(t,[[13.3,1],[14.1,0],[S.s4+.3,0],[S.s4+1.1,1]]);
+act(t=>{
+  const p=E.io(seg(t,11.6,12.5));
+  segAB.setAttribute('x2',X(lerp(PA[0],PB[0],p)));segAB.setAttribute('y2',Y(lerp(PA[1],PB[1],p)));
+  segAB.setAttribute('opacity',p>0?segOp(t):0);
+});
+
+/* points */
+function dot(color,r=12){
+  const gg=S_('g',{opacity:0});
+  const ring=S_('circle',{r:r,fill:'none',stroke:color,'stroke-width':3,opacity:0},gg);
+  const c=S_('circle',{r:r,fill:color,stroke:'#07080c','stroke-width':4},gg);
+  return {g:gg,c,ring,color,
+    set(p,scale,op,ringP){
+      gg.setAttribute('transform',`translate(${X(p[0]).toFixed(2)},${Y(p[1]).toFixed(2)})`);
+      gg.setAttribute('opacity',op);
+      c.setAttribute('transform',`scale(${scale.toFixed(4)})`);
+      if(ringP>0&&ringP<1){ring.setAttribute('r',r+48*E.out(ringP));ring.setAttribute('opacity',(1-ringP)*.9);}else ring.setAttribute('opacity',0);
+    }};
+}
+const ringAt=(t,times)=>{for(const x of times){const p=seg(t,x,x+.9);if(p>0&&p<1)return p;}return 0;};
+const pop=(t,t0)=>{const p=seg(t,t0,t0+.55);return p<=0?0:E.back(p)};
+const dO=dot('#ffffff',7);
+const dilDots=rayU.map(()=>dot(C.violet,8));
+const dA=dot(C.blue),dB=dot(C.orange),dM=dot(C.green,10),dAp=dot(C.violet),dTr=dot(C.violet,10);
+act(t=>{
+  dO.set([0,0],pop(t,S.s1+1),t>S.s1+1?1:0,0);
+  dA.set(PA,pop(t,7.3),t>7.3?kf(t,[[S.s3,1],[S.s3+.8,.4],[S.s4,.4],[S.s4+.8,1]]):0,ringAt(t,[7.35,S.s4+1.2]));
+  dB.set(PB,pop(t,9.3),t>9.3?1:0,ringAt(t,[9.35,33.6,S.s4+1.2]));
+  dM.set(PM,pop(t,12.3),t>12.3?segOp(t):0,ringAt(t,[12.35,S.s4+1.6]));
+  // A' flips from A
+  const s=E.io(seg(t,15.8,18.2));
+  const q=[lerp(PA[0],PAp[0],s),lerp(PA[1],PAp[1],s)];
+  dAp.set(q,pop(t,15.6),t>15.6?kf(t,dim4.map(([a,v])=>[a,v===1?1:.45])):0,ringAt(t,[18.25,21.05]));
+  conn.setAttribute('x2',X(q[0]));conn.setAttribute('y2',Y(q[1]));
+  conn.setAttribute('opacity',t>15.8?kf(t,[[15.8,0],[16.2,.7],[S.s3,.7],[S.s3+.8,0]]):0);
+  // dilation
+  const k=1+E.io(seg(t,30.9,33.6));
+  const dop=t>30.2?kf(t,[[34.4,1],[35.2,0]]):0;
+  dilDots.forEach((d,i)=>{const u=rayU[i];d.c.setAttribute('fill',mix(C.violet,C.orange,k-1));d.set([k*u,k*g(u)],pop(t,30.2+i*.08),dop,0);});
+  dTr.c.setAttribute('fill',mix(C.violet,C.orange,k-1));
+  dTr.set([k*PAp[0],k*PAp[1]],pop(t,30.6),t>30.6?kf(t,[[33.6,1],[34,0]]):0,0);
+});
+
+/* labels on graph */
+const labs=document.getElementById('labs');
+function lab(html,p,dx,dy,color,fs){
+  const d=document.createElement('div');d.className='lab';d.innerHTML=T(html);d.style.color=color||C.ink;if(fs)d.style.fontSize=fs+'px';
+  d.dataset.x=X(p[0])+dx;d.dataset.y=Y(p[1])+dy;labs.appendChild(d);
+  d.style.transformOrigin='0 50%';d.put=(op,sc=1)=>{d.style.opacity=op.toFixed(4);d.style.transform=`translate(${(+d.dataset.x).toFixed(2)}px,${(+d.dataset.y).toFixed(2)}px) scale(${sc.toFixed(4)})`;};
+  return d;
+}
+const fadeIO=(t,a,b=1e9,d=.5)=>E.out(seg(t,a,a+d))*(1-E.in(seg(t,b,b+.4)));
+const lO=lab('$\\mathrm{O}$',[0,0],-44,8,C.sub,32);
+const lLog=lab('$y=\\log_{16}(8x+2)$',[3.25,1.2],0,-78,C.blue,34);
+const lF=lab('$y=4^{x-1}-\\frac12$',[2.86,5.5],0,-6,C.orange,34);
+const lA=lab('$\\mathrm{A}(a,\\,b)$',PA,16,14,C.blue);
+const lB=lab('$\\mathrm{B}$',PB,22,-26,C.orange);
+const lB2=lab('$\\mathrm{B}(2b,\\,2a)$',PB,22,-26,C.orange);
+const lM=lab('$\\mathrm{M}$',PM,20,-24,C.green);
+const lAp=lab("$\\mathrm{A}'(b,\\,a)$",PAp,-196,-52,C.violet);
+const lYX=lab('$y=x$',[4.55,4.55],34,8,C.sub,32);
+const lX2=lab('$\\times 2$',[1.65,3.58],-128,-34,C.orange,46);
+act(t=>{
+  const big=kf(t,[[S.s4,1],[S.s4+1,1.5]]);
+  lO.put(.9*fadeIO(t,S.s1+1));
+  lLog.put(fadeIO(t,7.2)*kf(t,[[S.s3,1],[S.s3+.8,.3]]));
+  lF.put(fadeIO(t,9.2)*kf(t,[[S.s2,1],[S.s2+.8,.35],[S.s3,.35],[S.s3+.8,1],...dim4]));
+  lA.put(fadeIO(t,7.5)*kf(t,[[S.s3,1],[S.s3+.8,.4],[S.s4,.4],[S.s4+.8,1]]),big);
+  lB.put(fadeIO(t,9.5,33.9));
+  lB2.put(fadeIO(t,34.3),big);
+  lM.put(fadeIO(t,12.4)*segOp(t),big);
+  lAp.put(fadeIO(t,18.2)*kf(t,dim4.map(([a,v])=>[a,v===1?1:.45])));
+  lYX.put(fadeIO(t,S.s2+1.2)*kf(t,[[S.s3,.9],[S.s3+.8,.25]]));
+  lX2.put(fadeIO(t,31.2,34.6));
+});
+
+/* ---------- bottom: scene 1 conditions ---------- */
+const BY=1456;
+const conds=[
+  [C.blue,'점 $\\cb{\\mathrm{A}(a,b)}$ 는 로그 곡선 위',6.2],
+  [C.orange,'점 $\\co{\\mathrm{B}}$ 는 지수 곡선 위, 제1사분면',8.2],
+  [C.ink,'$\\mathrm{A}$를 $y=x$ 대칭한 점이 직선 $\\mathrm{OB}$ 위',10.1],
+  [C.green,'$\\mathrm{AB}$의 중점 $\\cg{\\mathrm{M}\\left(\\frac{77}{8},\\frac{133}{8}\\right)}$',11.7],
+];
+conds.forEach(([c,h,tin],i)=>{
+  const r=el('row',`<span class="num" style="background:${c}">${i+1}</span><span>${h}</span>`,{top:(BY+i*68)+'px'});
+  vis(r,tin,S.s2-.7+i*.05,{dy:22});
+});
+
+/* ---------- bottom: scene 2 ---------- */
+const e21=el('ctr','$\\cb{y=\\log_{16}(8x+2)}$',{top:(BY+4)+'px',fontSize:'44px',width:'420px'});
+vis(e21,S.s2+.7,S.s3-.6);
+const e22=el('ctr','<span style="font-size:26px;color:#a1a1a6;font-weight:600">$x\\leftrightarrow y$</span><br><span style="font-size:44px;color:#a1a1a6">→</span>',{top:(BY-18)+'px',left:'490px',width:'100px',lineHeight:'1.05'});
+vis(e22,16.4,S.s3-.6,{dy:0});
+const e23=el('ctr','$\\cv{y=2^{4x-3}-\\dfrac14}$',{top:(BY-14)+'px',left:'580px',width:'420px',fontSize:'44px'});
+vis(e23,18.2,S.s3-.6);
+const e24=el('ctr',"점 $\\cv{\\mathrm{A}'(b,\\,a)}$ 는 <span style='color:#bf8cff'>보라색 곡선</span> 위",{top:(BY+112)+'px',fontSize:'38px',fontWeight:600});
+vis(e24,19.4,S.s3-.55);
+const e25=el('ctr','그리고 동시에 <b>직선 OB</b> 위',{top:(BY+178)+'px',fontSize:'38px',fontWeight:600});
+vis(e25,21,S.s3-.5);
+
+/* ---------- bottom: scene 3 ---------- */
+const e31=el('ctr','$\\cv{g(x)=2^{4x-3}-\\tfrac14}\\qquad\\co{f(x)=2^{2x-2}-\\tfrac12}$',{top:(BY-2)+'px',fontSize:'38px'});
+vis(e31,S.s3+.7,34);
+const e32=el('ctr','$\\co{f(2x)}=2^{4x-2}-\\tfrac12=2\\left(2^{4x-3}-\\tfrac14\\right)=\\co{2}\\,\\cv{g(x)}$',{top:(BY+80)+'px',fontSize:'38px'});
+vis(e32,27.1,34.05);
+const e33=el('ctr','<span style="color:#bf8cff">g</span> 위의 점 $(x,\\,y)$ &nbsp;→&nbsp; <span style="color:#ff9f0a">f</span> 위의 점 $(2x,\\,2y)$',{top:(BY+172)+'px',fontSize:'37px',fontWeight:600});
+vis(e33,29.3,34.1);
+const e34=el('ctr','<span class="box">$\\therefore\\ \\co{\\mathrm{B}}=(2b,\\ 2a)$</span>',{top:(BY+6)+'px',fontSize:'68px'});
+vis(e34,34.5,S.s4-.5,{sc:.9});
+const e35=el('ctr small','직선 OB와 곡선 f는 제1사분면에서 한 번만 만난다<br>( f는 아래로 볼록, $f(0)<0$ )',{top:(BY+178)+'px',lineHeight:'1.45'});
+vis(e35,35.6,S.s4-.45,{dy:16});
+
+/* ---------- scene 4: calc ---------- */
+const CY=1090;
+const c1=el('ctr','$\\cb{\\mathrm{A}(a,\\,b)}\\qquad\\co{\\mathrm{B}(2b,\\,2a)}\\qquad\\cg{\\mathrm{M}\\left(\\tfrac{77}{8},\\tfrac{133}{8}\\right)}$',{top:CY+'px',fontSize:'38px'});
+vis(c1,S.s4+1.1,S.s5-.3);
+const c2=el('ctr','$\\dfrac{a+2b}{2}=\\dfrac{77}{8}\\qquad\\dfrac{b+2a}{2}=\\dfrac{133}{8}$',{top:(CY+92)+'px',fontSize:'46px'});
+vis(c2,S.s4+2.6,S.s5-.27);
+const c3=el('ctr','$a+2b=\\dfrac{77}{4}\\qquad 2a+b=\\dfrac{133}{4}$',{top:(CY+232)+'px',fontSize:'46px'});
+vis(c3,S.s4+4.8,S.s5-.24);
+const c4=el('ctr','<span class="small" style="font-size:30px">두 식을 더하면</span>&nbsp;&nbsp; $3(a+b)=\\dfrac{210}{4}\\ \\Rightarrow\\ a+b=\\dfrac{35}{2}$',{top:(CY+364)+'px',fontSize:'40px'});
+vis(c4,S.s4+6.7,S.s5-.21);
+const c5=el('ctr','<span class="box" style="border-color:rgba(48,209,88,.6);background:rgba(48,209,88,.1)">$a=\\dfrac{63}{4}\\qquad b=\\dfrac{7}{4}$</span>',{top:(CY+490)+'px',fontSize:'54px'});
+vis(c5,S.s4+8.6,S.s5-.18,{sc:.88});
+
+/* ---------- scene 5: answer ---------- */
+const f1=el('ctr','$a\\times b=\\dfrac{63}{4}\\times\\dfrac{7}{4}=\\cg{\\dfrac{441}{16}}$',{top:'300px',fontSize:'60px'});vis(f1,S.s5+.6);
+const f2=el('ctr','$\\dfrac{q}{p}=\\dfrac{441}{16}\\quad\\Rightarrow\\quad p+q=16+441$',{top:'490px',fontSize:'46px',color:C.sub});vis(f2,S.s5+1.9);
+const fAns=el('ans','0',{top:'690px'});
+act(t=>{
+  const t0=S.s5+3.1,p=seg(t,t0,t0+1.1);
+  fAns.textContent=String(Math.round(457*E.expo(p)));
+  fAns.style.opacity=E.out(seg(t,t0,t0+.4)).toFixed(4);
+  fAns.style.transform=`scale(${lerp(.7,1,E.back(seg(t,t0,t0+.9))).toFixed(4)})`;
+});
+const f3=el('ctr','<span class="small" style="font-size:30px;color:#30d158;font-weight:700">검산 ✓</span>&nbsp;&nbsp; $\\log_{16}\\!\\left(8\\cdot\\tfrac{63}{4}+2\\right)=\\log_{16}128=\\tfrac74=b$',{top:'1150px',fontSize:'36px'});
+vis(f3,S.s5+4.6);
+const f4=el('ctr','<span class="pill"><span style="color:#bf8cff">대칭</span><i>→</i>역함수</span>',{top:'1320px'});vis(f4,S.s5+5.7,1e9,{sc:.9});
+const f5=el('ctr','<span class="pill"><span style="color:#ff9f0a">닮은 식</span><i>→</i>확대</span>',{top:'1450px'});vis(f5,S.s5+6.2,1e9,{sc:.9});
+
+/* ---------- background & progress ---------- */
+const g1=document.getElementById('glow1'),g2=document.getElementById('glow2'),pf=document.getElementById('progFill');
+act(t=>{
+  const a=t/DUR*Math.PI*2;
+  g1.style.transform=`translate(${(-650+260*Math.sin(a*1.3)).toFixed(1)}px,${(-700+300*Math.cos(a)).toFixed(1)}px)`;
+  g2.style.transform=`translate(${(150+240*Math.cos(a*1.1)).toFixed(1)}px,${(900+280*Math.sin(a*.9)).toFixed(1)}px)`;
+  pf.style.width=(100*t/DUR).toFixed(3)+'%';
+});
+
+window.renderFrame=t=>{for(const f of acts)f(t);};
+window.ready=(async()=>{
+  renderFrame(30);
+  await Promise.all([400,500,600,700,800].map(w=>document.fonts.load(w+' 40px Pretendard','가A1')));
+  await document.fonts.ready;
+  renderFrame(0);
+  return true;
+})();
+const q=new URLSearchParams(location.search).get('t');
+if(q!==null)window.ready.then(()=>renderFrame(+q));
+</script>
+</body>
+</html>

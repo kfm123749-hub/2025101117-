@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>생성형 AI의 10년</title>
+<style>
+@font-face{font-family:"Pretendard";font-weight:45 920;font-style:normal;
+  src:url("node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2") format("woff2-variations");}
+*{margin:0;padding:0}html,body{background:#000;overflow:hidden}canvas{display:block;width:1080px;height:1920px}
+</style>
+<script src="timeline.js"></script>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* =========================================================
+   생성형 AI의 10년 — 60초 쇼츠 (1080×1920, 60fps)
+   훅(픽셀 얼굴) → 커지는 AI → ChatGPT → 글에서 영상까지 → 값 폭락 → 모두의 도구 → 한계 → 반전(이 영상도 AI가)
+   ========================================================= */
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const W=1080,HH=1920,DUR=60,S=TL.S;
+const cl=x=>Math.min(1,Math.max(0,x)),lerp=(a,b,s)=>a+(b-a)*s,seg=(t,a,b)=>cl((t-a)/(b-a));
+const sm=(x,a,b)=>{const p=cl((x-a)/(b-a));return p*p*(3-2*p)};
+const E={out:x=>1-Math.pow(1-x,3),in:x=>x*x*x,io:x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,
+  back:x=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)},expo:x=>x>=1?1:1-Math.pow(2,-10*x)};
+const io=(t,a,b,din=.5,dout=.35)=>E.out(seg(t,a,a+din))*(1-E.in(seg(t,b,b+dout)));
+const INK='#f5f5f7',SUB='#a1a1a6',GOLD='#ffc83d',BLUE='#5ac8fa',VIO='#bf8cff',GREEN='#30d158',RED='#ff5a4f',PINK='#ff6b9a';
+function meas(s,size,weight,ls=-0.02){ctx.save();ctx.font=`${weight} ${size}px Pretendard`;ctx.letterSpacing=(ls*size)+'px';const w=ctx.measureText(s).width;ctx.restore();return w;}
+function txt(s,x,y,size,weight,color,align='left',alpha=1,ls=-0.02,maxW=960){
+  if(alpha<=0.003)return 0;{const w0=meas(s,size,weight,ls);if(w0>maxW)size=size*maxW/w0;}
+  ctx.save();ctx.globalAlpha*=alpha;ctx.font=`${weight} ${size}px Pretendard`;ctx.letterSpacing=(ls*size)+'px';
+  ctx.textAlign=align;ctx.fillStyle=color;ctx.fillText(s,x,y);const w=ctx.measureText(s).width;ctx.restore();return w;}
+function rich(parts,x,y,alpha=1,align='center',maxW=920){
+  {const tw=parts.reduce((a,p)=>a+meas(p[0],p[1],p[2]),0);if(tw>maxW){const f=maxW/tw;parts=parts.map(p=>[p[0],p[1]*f,p[2],p[3]]);}}
+  const ws=parts.map(p=>meas(p[0],p[1],p[2]));let cx=align==='center'?x-ws.reduce((a,b)=>a+b,0)/2:align==='right'?x-ws.reduce((a,b)=>a+b,0):x;
+  parts.forEach((p,i)=>{txt(p[0],cx,y,p[1],p[2],p[3],'left',alpha);cx+=ws[i];});}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);}
+let sd=2014;const rnd=()=>(sd=(sd*16807)%2147483647)/2147483647;
+
+/* ---------- 공통 UI ---------- */
+function progress(t){ctx.fillStyle='rgba(255,255,255,.08)';rr(80,136,920,6,3);ctx.fill();
+  const g=ctx.createLinearGradient(80,0,1000,0);g.addColorStop(0,BLUE);g.addColorStop(.5,VIO);g.addColorStop(1,GOLD);ctx.fillStyle=g;rr(80,136,920*Math.min(1,t/DUR),6,3);ctx.fill();}
+function chip(t,tin,tout,s,col){const a=io(t,tin,tout);if(a<=0)return;const w=meas(s,30,700,0)+56;
+  ctx.save();ctx.globalAlpha=a;ctx.fillStyle='rgba(255,255,255,.08)';rr(80,196,w,62,31);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.14)';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
+  txt(s,108,238,30,700,col,'left',a,0);}
+function head(t,tin,tout,l1,l2){const a=io(t,tin,tout);if(a<=0)return;const d=(1-E.out(seg(t,tin,tin+.55)))*30;
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=24;rich(l1,80,352+d,a,'left');if(l2)rich(l2,80,436+d,a,'left');ctx.restore();}
+function caption(t,tin,tout,parts,sub,y=1500){const a=io(t,tin,tout,.45,.3);if(a<=0)return;const d=(1-E.out(seg(t,tin,tin+.45)))*20;
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=26;rich(parts,540,y+d,a,'center',800);if(sub)txt(sub,540,y+54+d,29,550,'#c7c7cc','center',a,-.01,800);ctx.restore();}
+const sceneA=(t,a,b)=>io(t,a,b-.45,.45,.35);
+
+/* ---------- 배경 ---------- */
+const DUST=[...Array(140)].map(()=>({x:rnd()*W,y:rnd()*HH,r:.5+rnd()*1.4,p:rnd()*6.28,v:.2+rnd()*.6}));
+function bg(t){
+  ctx.fillStyle='#05070d';ctx.fillRect(0,0,W,HH);
+  const a=t/DUR*6.283;
+  const blob=(x,y,r,c,al)=>{const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,`rgba(${c},${al})`);g.addColorStop(.6,`rgba(${c},0)`);ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);};
+  blob(180+220*Math.sin(a*1.2),160+200*Math.cos(a),980,'70,120,255',.15);
+  blob(950+200*Math.cos(a*1.1),1750+220*Math.sin(a*.9),900,'191,140,255',.10);
+  blob(540,980,800,'255,180,80',.04+.05*sm(t,54,56));
+  for(const d of DUST){ctx.fillStyle=`rgba(255,255,255,${(.12+.25*Math.abs(Math.sin(d.p+t*d.v))).toFixed(3)})`;ctx.beginPath();ctx.arc(d.x,(d.y-t*8*d.v+HH)%HH,d.r,0,6.283);ctx.fill();}
+}
+
+/* =========================================================
+   0. 훅 — 픽셀 얼굴 (창작 그림, 실제 AI 출력 아님)
+   ========================================================= */
+function drawFace(g){
+  const S=512;let gr=g.createRadialGradient(256,190,40,256,256,380);gr.addColorStop(0,'#6b8fbf');gr.addColorStop(1,'#16223a');g.fillStyle=gr;g.fillRect(0,0,S,S);
+  // 어깨
+  gr=g.createLinearGradient(0,400,0,512);gr.addColorStop(0,'#4f6fa8');gr.addColorStop(1,'#243a66');g.fillStyle=gr;
+  g.beginPath();g.moveTo(30,512);g.bezierCurveTo(50,430,150,405,200,398);g.lineTo(312,398);g.bezierCurveTo(362,405,462,430,482,512);g.closePath();g.fill();
+  // 목
+  gr=g.createLinearGradient(0,330,0,420);gr.addColorStop(0,'#b97d5c');gr.addColorStop(1,'#d79b78');g.fillStyle=gr;
+  g.beginPath();g.moveTo(212,320);g.lineTo(300,320);g.lineTo(306,410);g.quadraticCurveTo(256,432,206,410);g.closePath();g.fill();
+  // 뒷머리
+  g.fillStyle='#2a1c16';g.beginPath();g.ellipse(256,226,150,170,0,0,6.283);g.fill();
+  g.beginPath();g.moveTo(112,240);g.quadraticCurveTo(100,330,135,372);g.lineTo(170,300);g.closePath();g.fill();
+  g.beginPath();g.moveTo(400,240);g.quadraticCurveTo(412,330,377,372);g.lineTo(342,300);g.closePath();g.fill();
+  // 귀
+  g.fillStyle='#e0a984';g.beginPath();g.ellipse(146,252,16,28,-.1,0,6.283);g.fill();g.beginPath();g.ellipse(366,252,16,28,.1,0,6.283);g.fill();
+  // 얼굴
+  gr=g.createRadialGradient(236,215,20,256,250,170);gr.addColorStop(0,'#f8d2b2');gr.addColorStop(.7,'#e9b38f');gr.addColorStop(1,'#c98d6a');g.fillStyle=gr;
+  g.beginPath();g.moveTo(256,96);g.bezierCurveTo(338,96,372,170,370,240);g.bezierCurveTo(368,312,318,368,256,372);g.bezierCurveTo(194,368,144,312,142,240);g.bezierCurveTo(140,170,174,96,256,96);g.fill();
+  // 볼
+  for(const x of [196,316]){gr=g.createRadialGradient(x,282,4,x,282,40);gr.addColorStop(0,'rgba(235,120,110,.35)');gr.addColorStop(1,'rgba(235,120,110,0)');g.fillStyle=gr;g.fillRect(x-40,242,80,80);}
+  // 앞머리
+  g.fillStyle='#2f2019';g.beginPath();g.moveTo(140,236);g.bezierCurveTo(128,120,214,78,280,86);g.bezierCurveTo(352,94,392,152,374,238);
+  g.bezierCurveTo(360,186,330,150,286,140);g.bezierCurveTo(250,166,196,170,166,180);g.bezierCurveTo(152,196,146,214,140,236);g.fill();
+  g.strokeStyle='rgba(120,80,60,.45)';g.lineWidth=3;g.beginPath();g.moveTo(286,92);g.quadraticCurveTo(250,120,236,160);g.stroke();
+  // 눈썹
+  g.strokeStyle='#3a271d';g.lineWidth=7;g.lineCap='round';
+  g.beginPath();g.moveTo(182,206);g.quadraticCurveTo(206,194,232,202);g.stroke();g.beginPath();g.moveTo(280,202);g.quadraticCurveTo(306,194,330,206);g.stroke();
+  // 눈
+  for(const x of [208,304]){
+    g.fillStyle='#fbf7f2';g.beginPath();g.moveTo(x-26,236);g.quadraticCurveTo(x,218,x+26,236);g.quadraticCurveTo(x,250,x-26,236);g.fill();
+    g.fillStyle='#5a3a26';g.beginPath();g.arc(x,236,11,0,6.283);g.fill();g.fillStyle='#160d08';g.beginPath();g.arc(x,236,5.5,0,6.283);g.fill();
+    g.fillStyle='#fff';g.beginPath();g.arc(x+4,232,3,0,6.283);g.fill();
+    g.strokeStyle='#2a1a12';g.lineWidth=3.5;g.beginPath();g.moveTo(x-27,236);g.quadraticCurveTo(x,216,x+27,235);g.stroke();
+  }
+  // 코
+  g.strokeStyle='rgba(150,90,65,.7)';g.lineWidth=3.5;g.beginPath();g.moveTo(262,246);g.quadraticCurveTo(268,282,262,294);g.stroke();
+  g.fillStyle='rgba(140,80,60,.45)';g.beginPath();g.ellipse(246,298,6,3.5,0,0,6.283);g.fill();g.beginPath();g.ellipse(268,298,6,3.5,0,0,6.283);g.fill();
+  // 입
+  g.fillStyle='#c4615a';g.beginPath();g.moveTo(222,328);g.quadraticCurveTo(240,318,256,324);g.quadraticCurveTo(272,318,290,328);g.quadraticCurveTo(256,334,222,328);g.fill();
+  g.fillStyle='#d97a70';g.beginPath();g.moveTo(224,329);g.quadraticCurveTo(256,352,288,329);g.quadraticCurveTo(256,336,224,329);g.fill();
+  // 조명
+  gr=g.createLinearGradient(140,0,372,0);gr.addColorStop(0,'rgba(255,240,220,.10)');gr.addColorStop(.6,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(40,20,30,.18)');g.fillStyle=gr;g.fillRect(0,0,S,S);
+}
+const FACE=document.createElement('canvas');FACE.width=FACE.height=512;drawFace(FACE.getContext('2d'));
+const PIX={};function pixCanvas(n){if(!PIX[n]){const c=document.createElement('canvas');c.width=c.height=n;const g=c.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(FACE,0,0,n,n);PIX[n]=c;}return PIX[n];}
+function noiseCanvas(k,colored,n=64){const c=document.createElement('canvas');c.width=c.height=n;const g=c.getContext('2d'),im=g.createImageData(n,n);let s=k*7919+13;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+  for(let i=0;i<im.data.length;i+=4){const v=r()*255;im.data[i]=colored?r()*255:v;im.data[i+1]=colored?r()*255:v;im.data[i+2]=colored?r()*255:v;im.data[i+3]=255;}g.putImageData(im,0,0);return c;}
+const NOISE=[...Array(6)].map((_,k)=>noiseCanvas(k,false)),CNOISE=[...Array(6)].map((_,k)=>noiseCanvas(k+20,true,48));
+function hook(t,AM=1){
+  const A=(1-E.in(seg(t,4.2,4.55)))*AM;if(A<=0)return;
+  const X=220,Y=540,SZ=640,n=TL.faceN(t),p=seg(t,1.75,2.95);
+  ctx.save();ctx.globalAlpha=A;
+  rr(X-8,Y-8,SZ+16,SZ+16,42);ctx.fillStyle='rgba(255,255,255,.08)';ctx.fill();
+  ctx.save();rr(X,Y,SZ,SZ,34);ctx.clip();
+  ctx.filter=`grayscale(${(1-p).toFixed(3)}) contrast(${lerp(.85,1,p).toFixed(3)}) blur(${lerp(3.2,0,p).toFixed(2)}px)`;
+  if(n>=512){ctx.imageSmoothingEnabled=true;ctx.drawImage(FACE,X,Y,SZ,SZ);}else{ctx.imageSmoothingEnabled=false;ctx.drawImage(pixCanvas(n),X,Y,SZ,SZ);}
+  ctx.filter='none';
+  const na=.13*(1-p);if(na>0){ctx.globalAlpha=A*na;ctx.imageSmoothingEnabled=false;ctx.drawImage(NOISE[Math.floor(t*12)%6],X,Y,SZ,SZ);}
+  ctx.imageSmoothingEnabled=true;
+  const fl=Math.sin(Math.PI*seg(t,2.95,3.3));if(fl>0){ctx.globalAlpha=A*.45*fl;ctx.fillStyle='#fff';ctx.fillRect(X,Y,SZ,SZ);}
+  ctx.restore();ctx.restore();
+  const yr=2014+Math.floor(4*p+1e-6);
+  txt(String(yr),540,1300,120,850,p>=1?GOLD:'#cfd6e4','center',A,-.03);
+  txt('※ 실제 AI 출력이 아닌 재현 그림',540,1360,26,600,'#8e8e93','center',A,0);
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=24;
+  rich([['AI가 그린 ',64,800,INK],["'사람 얼굴'",66,850,GOLD]],80,352,A,'left');
+  rich([['2014년엔 이랬는데',58,750,'#c7c7cc']],80,436,A*(1-E.in(seg(t,1.45,1.7))),'left');
+  rich([['4년 뒤엔 ',58,750,INK],['이렇게',62,850,GOLD]],80,436+(1-E.out(seg(t,1.75,2.2)))*20,A*E.out(seg(t,1.75,2.2)),'left');
+  ctx.restore();
+}
+
+/* =========================================================
+   1. 커지는 AI — 원의 면적 = 매개변수 수
+   ========================================================= */
+const DISK=[...Array(700)].map(()=>{let x,y;do{x=rnd()*2-1;y=rnd()*2-1;}while(x*x+y*y>1);return [x,y,rnd()];});
+const CIRC=[['GPT-3',330,GOLD,'255,200,61',9.0],['GPT-2',30.6,VIO,'191,140,255',6.2],['GPT-1',8.53,BLUE,'90,200,250',4.65]];
+function scaleScene(t){
+  if(t<S.scale-.05||t>S.chat+.05)return;const A=sceneA(t,S.scale,S.chat);if(A<=0)return;
+  const z=TL.zoom(t),AX=540,AY=1290;
+  for(const [nm,r,col,rgb,tin] of CIRC){
+    const R=r*z,cx=AX,cy=AY-R,a=A*E.out(seg(t,tin,tin+.7));if(a<=0||R>2600)continue;
+    ctx.save();ctx.globalAlpha=a;
+    const g=ctx.createRadialGradient(cx,cy,R*.15,cx,cy,R);g.addColorStop(0,`rgba(${rgb},.04)`);g.addColorStop(1,`rgba(${rgb},.24)`);ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,R,0,6.283);ctx.fill();
+    if(R>40){ctx.fillStyle=`rgb(${rgb})`;const k=Math.min(700,Math.floor(R*1.7));for(let i=0;i<k;i++){const [u,v,w]=DISK[i],px=cx+u*R*.95,py=cy+v*R*.95;if(py<-10||py>HH+10)continue;
+      ctx.globalAlpha=a*(.18+.45*w*(.6+.4*Math.sin(t*2.3+i)));ctx.beginPath();ctx.arc(px,py,1.4+1.3*w,0,6.283);ctx.fill();}}
+    ctx.globalAlpha=a;ctx.strokeStyle=col;ctx.lineWidth=3.5;ctx.shadowColor=col;ctx.shadowBlur=18;ctx.beginPath();ctx.arc(cx,cy,R,0,6.283);ctx.stroke();ctx.restore();
+    // 이름표: 큰 원은 위에, 작은 원은 오른쪽에 (전환 구간에서는 잠깐 사라짐)
+    const big=R>=72,fade=Math.min(1,Math.abs(R-72)/14);
+    if(big){const y=cy-R-24;if(y>500)txt(nm,cx,y,40,850,col,'center',a*fade,-.02);}
+    else{const ly=nm==='GPT-2'?AY-2*R-8:AY+2,lx=650;
+      ctx.save();ctx.globalAlpha=a*fade;ctx.strokeStyle=col;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx+R*.75,cy-R*.65);ctx.lineTo(lx-14,ly-10);ctx.stroke();ctx.restore();
+      txt(nm,lx,ly,32,800,col,'left',a*fade,-.01);}
+  }
+  const bp=seg(t,10.6,11.0);if(bp>0){ctx.save();ctx.translate(540,1010);const sc=E.back(bp);ctx.scale(sc,sc);ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=30;
+    const g=ctx.createLinearGradient(-260,0,260,0);g.addColorStop(0,'#fff3c4');g.addColorStop(.5,GOLD);g.addColorStop(1,'#ff9a3c');
+    ctx.globalAlpha=A;ctx.font='850 150px Pretendard';ctx.letterSpacing='-5px';ctx.textAlign='center';ctx.fillStyle=g;ctx.fillText('×1,500',0,0);ctx.restore();}
+}
+
+/* =========================================================
+   2. ChatGPT — 1억 명까지 걸린 시간
+   ========================================================= */
+const RACE=[['ChatGPT',2,GREEN,'2개월'],['TikTok',9,PINK,'9개월'],['Instagram',30,VIO,'2년 6개월']];
+function person(x,y,s,col,a){ctx.save();ctx.globalAlpha=a;ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y-14*s,11*s,0,6.283);ctx.fill();rr(x-15*s,y,30*s,26*s,13*s);ctx.fill();ctx.restore();}
+function chatScene(t){
+  if(t<S.chat-.05||t>S.modal+.05)return;const A=sceneA(t,S.chat,S.modal);if(A<=0)return;
+  const rA=A*(1-E.in(seg(t,17.3,17.6)));
+  if(rA>0){const m=TL.months(t);
+    RACE.forEach(([nm,tg,col,lab],i)=>{const y=620+i*190,p=Math.min(1,m/tg),ft=TL.finish(tg),done=t>=ft,ap=rA*E.out(seg(t,12.75+i*.12,13.25+i*.12));
+      txt(nm,110,y,44,800,INK,'left',ap,-.02);
+      ctx.save();ctx.globalAlpha=ap;ctx.fillStyle='rgba(255,255,255,.08)';rr(110,y+26,820,56,28);ctx.fill();
+      if(p>0){ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=done?26:8;rr(110,y+26,Math.max(56,820*p),56,28);ctx.fill();}ctx.restore();
+      const q=seg(t,ft,ft+.7);if(q>0&&q<1){ctx.save();ctx.globalAlpha=ap*(1-q);ctx.strokeStyle=col;ctx.lineWidth=4;rr(110-24*q,y+26-24*q,820+48*q,56+48*q,28+24*q);ctx.stroke();ctx.restore();}
+      if(done)txt(lab,910,y+66,32,850,'#0b0d12','right',ap*E.out(seg(t,ft,ft+.25)),-.01);
+      if(done)txt('1억 명 달성',910,y,28,700,col,'right',ap*E.out(seg(t,ft,ft+.25)),0);});
+    txt('경과 시간',110,1236,30,650,SUB,'left',rA*E.out(seg(t,13.2,13.6)),0);
+    const mm=Math.floor(m+1e-6);rich([[String(mm),96,850,INK],[' 개월',44,750,SUB]],110,1336,rA*E.out(seg(t,13.2,13.6)),'left');
+  }
+  const bA=A*E.out(seg(t,17.7,18.2));
+  if(bA>0){
+    txt('2026년 2월, 매주 ChatGPT를 쓰는 사람',540,700,38,700,'#c7c7cc','center',bA,-.01);
+    const v=9*E.expo(seg(t,17.8,19.0));
+    ctx.save();ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=30;const g=ctx.createLinearGradient(240,0,840,0);g.addColorStop(0,'#fff3c4');g.addColorStop(.5,GOLD);g.addColorStop(1,'#ff9a3c');
+    ctx.globalAlpha=bA;ctx.font='850 200px Pretendard';ctx.letterSpacing='-6px';ctx.textAlign='center';ctx.fillStyle=g;ctx.fillText((v>=8.95?'9':v.toFixed(1))+'억 명',540,930);ctx.restore();
+    const pa=bA*E.out(seg(t,19.2,19.6));
+    for(let k=0;k<9;k++){const x=540+(k-4)*90,lit=k===4;person(x,1150,1.5,lit?GOLD:'rgba(255,255,255,.22)',pa*(lit?1:.9));}
+    txt('전 세계 약 9명 중 1명꼴',540,1250,36,750,INK,'center',pa,-.01);
+  }
+}
+
+/* =========================================================
+   3. 글에서 영상까지 — 한 화면이 진화
+   ========================================================= */
+const PX=110,PY=600,PW=860,PH=580;
+const SCN=document.createElement('canvas');SCN.width=PW;SCN.height=PH;const sg=SCN.getContext('2d');
+function drawSea(g,tt,warp){
+  const w=PW,h=PH,hz=h*.58;
+  let gr=g.createLinearGradient(0,0,0,hz);gr.addColorStop(0,'#241a4a');gr.addColorStop(.55,'#b84d7a');gr.addColorStop(1,'#ffb35c');g.fillStyle=gr;g.fillRect(0,0,w,hz+1);
+  const sx=w*.64,sy=hz-36+6*Math.sin(tt*.3);
+  gr=g.createRadialGradient(sx,sy,10,sx,sy,190);gr.addColorStop(0,'rgba(255,230,160,.55)');gr.addColorStop(1,'rgba(255,200,120,0)');g.fillStyle=gr;g.fillRect(0,0,w,hz);
+  gr=g.createRadialGradient(sx,sy-10,5,sx,sy,66);gr.addColorStop(0,'#fff6d8');gr.addColorStop(1,'#ff8f3c');g.fillStyle=gr;g.beginPath();g.arc(sx,sy,66,0,6.283);g.fill();
+  gr=g.createLinearGradient(0,hz,0,h);gr.addColorStop(0,'#4a2c5e');gr.addColorStop(1,'#0e0a1f');g.fillStyle=gr;g.fillRect(0,hz,w,h-hz);
+  for(let k=0;k<26;k++){const y=hz+8+k*k*.55+k*4,ww=70-k*1.8+18*Math.sin(tt*2+k);g.fillStyle=`rgba(255,${190-k*3},${120-k*2},${(.75-k*.025).toFixed(3)})`;g.fillRect(sx-ww/2+8*Math.sin(tt*1.7+k*1.3),y,ww,2.5);}
+  g.strokeStyle='rgba(255,210,190,.18)';g.lineWidth=2;
+  for(let k=0;k<12;k++){const y=hz+14+k*k*1.6+k*6;g.beginPath();for(let x=0;x<=w;x+=12){const yy=y+3*Math.sin(x*.03+tt*(1.2+k*.1)+k);x?g.lineTo(x,yy):g.moveTo(x,yy);}g.stroke();}
+  // 돛단배
+  const bx=w*.33+10*Math.sin(tt*.45),by=hz+52+5*Math.sin(tt*1.5),rot=.05*Math.sin(tt*1.2)+warp*.25*Math.sin(tt*11);
+  g.save();g.translate(bx,by);g.rotate(rot);g.scale(1+warp*.35*Math.sin(tt*7),1-warp*.25*Math.sin(tt*9));
+  g.fillStyle='#160f22';g.beginPath();g.moveTo(-70,0);g.lineTo(70,0);g.lineTo(50,22);g.lineTo(-52,22);g.closePath();g.fill();
+  g.strokeStyle='#160f22';g.lineWidth=5;g.beginPath();g.moveTo(0,0);g.lineTo(0,-150);g.stroke();
+  gr=g.createLinearGradient(-60,0,60,0);gr.addColorStop(0,'#ffe9cf');gr.addColorStop(1,'#e8b49a');g.fillStyle=gr;
+  g.beginPath();g.moveTo(4,-146);g.quadraticCurveTo(70+warp*60*Math.sin(tt*13),-80,62,-8);g.lineTo(4,-8);g.closePath();g.fill();
+  g.beginPath();g.moveTo(-4,-128);g.quadraticCurveTo(-46,-70,-52,-8);g.lineTo(-4,-8);g.closePath();g.fill();
+  if(warp>0){g.globalAlpha=.5;g.beginPath();g.moveTo(14,-120);g.quadraticCurveTo(90,-40,40,-10);g.lineTo(14,-10);g.fill();g.globalAlpha=1;}
+  g.restore();
+  g.fillStyle='rgba(20,12,30,.35)';g.beginPath();g.ellipse(bx,by+26,72,6,0,0,6.283);g.fill();
+  // 새
+  g.strokeStyle='#2a1838';g.lineWidth=3;g.lineCap='round';
+  for(let k=0;k<3;k++){const x=((w*.15+tt*38+k*110)%(w+80))-40,y=h*.2+k*28+6*Math.sin(tt+k),f=8*Math.sin(tt*6+k*2);g.beginPath();g.moveTo(x-16,y-f);g.quadraticCurveTo(x-6,y-2,x,y+2);g.quadraticCurveTo(x+6,y-2,x+16,y-f);g.stroke();}
+}
+const MODE_LABEL=['2020 · AI가 글을 씁니다','2022 · 글로 그림을 그립니다','2023 · 몇 초짜리, 일그러지는 영상','2024 · 최대 1분, 매끄러운 영상 (Sora)','2025 · 소리까지 함께 (Veo 3)'];
+const CHIPS=[['글',BLUE],['그림',VIO],['영상',PINK],['소리',GOLD]],CHIP_T=[21.6,24.0,26.6,31.0];
+function modalScene(t){
+  if(t<S.modal-.05||t>S.cost+.05)return;const A=sceneA(t,S.modal,S.cost);if(A<=0)return;
+  const M=TL.MODES;let mode=0;for(let i=0;i<M.length;i++)if(t>=M[i])mode=i;
+  // 상단 단계 표시
+  CHIPS.forEach(([s,col],i)=>{const on=t>=CHIP_T[i],x=110+i*215,a=A*E.out(seg(t,21.7+i*.08,22.1+i*.08)),pop=on?1+.08*Math.sin(Math.PI*seg(t,CHIP_T[i],CHIP_T[i]+.35)):1;
+    ctx.save();ctx.globalAlpha=a;ctx.translate(x+97,515);ctx.scale(pop,pop);ctx.translate(-x-97,-515);ctx.fillStyle=on?col:'rgba(255,255,255,.07)';rr(x,488,195,56,28);ctx.fill();
+    if(!on){ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=1.5;ctx.stroke();}ctx.restore();
+    txt(s,x+97,527,30,850,on?'#0b0d12':'#8e8e93','center',a,0);
+    if(i<3)txt('→',x+205,526,26,700,'#6b6f7a','center',a,0);});
+  // 화면 틀
+  ctx.save();ctx.globalAlpha=A;rr(PX-6,PY-6,PW+12,PH+12,40);ctx.fillStyle='rgba(255,255,255,.08)';ctx.fill();ctx.save();rr(PX,PY,PW,PH,34);ctx.clip();
+  if(mode===0){
+    ctx.fillStyle='#0d1322';ctx.fillRect(PX,PY,PW,PH);
+    txt('사용자',PX+60,PY+150,26,650,SUB,'left',1,0);
+    ctx.fillStyle='rgba(90,200,250,.12)';rr(PX+50,PY+170,PW-100,96,28);ctx.fill();
+    const n=TL.PROMPT.length*seg(t,22.0,23.0),typed=TL.PROMPT.slice(0,Math.floor(n+1e-6));
+    const tw=txt(typed,PX+80,PY+232,38,700,INK,'left',1,-.01);
+    if(t<23.05&&Math.sin(t*14)>0){ctx.fillStyle=BLUE;ctx.fillRect(PX+86+tw,PY+200,4,44);}
+    if(t>=23.0){txt('AI',PX+60,PY+340,26,650,GREEN,'left',1,0);
+      const all=TL.REPLY[0]+TL.REPLY[1],k=Math.floor(all.length*seg(t,23.05,23.85)+1e-6),l1=all.slice(0,Math.min(k,TL.REPLY[0].length)),l2=k>TL.REPLY[0].length?all.slice(TL.REPLY[0].length,k):'';
+      txt(l1,PX+60,PY+400,40,650,'#e8e8ee','left',1,-.01);txt(l2,PX+60,PY+456,40,650,'#e8e8ee','left',1,-.01);}
+  }else{
+    const warp=mode===2?1:0,tt=mode===1?0:mode===2?Math.floor(t*7)/7:t;
+    drawSea(sg,tt,warp);
+    if(mode===1){const p=E.out(seg(t,24.0,25.5));
+      ctx.filter=`blur(${(16*(1-p)).toFixed(1)}px) saturate(${lerp(.3,1,p).toFixed(2)})`;ctx.drawImage(SCN,PX,PY);ctx.filter='none';
+      const na=Math.pow(1-p,1.2);if(na>.01){ctx.globalAlpha=A*na;ctx.imageSmoothingEnabled=true;ctx.drawImage(CNOISE[Math.floor(t*15)%6],PX,PY,PW,PH);ctx.globalAlpha=A;}}
+    else if(mode===2){ctx.filter=`hue-rotate(${(Math.sin(tt*17)*22).toFixed(1)}deg) saturate(1.35)`;
+      for(let s=0;s<29;s++){const yy=s*20,off=(Math.sin(yy*.045+tt*9)*18+Math.sin(yy*.11-tt*5)*9)*(.6+.4*Math.sin(tt*13));ctx.drawImage(SCN,0,yy,PW,20,PX+off,PY+yy,PW,20);}
+      ctx.filter='none';
+      if(Math.floor(t*7)%5===0){ctx.globalAlpha=A*.35;ctx.drawImage(SCN,0,0,PW,PH,PX+22,PY-10,PW,PH);ctx.globalAlpha=A;}}
+    else{ctx.drawImage(SCN,PX,PY);
+      if(mode===4){const wa=E.out(seg(t,31.0,31.4));ctx.fillStyle=`rgba(5,7,13,${(.5*wa).toFixed(3)})`;ctx.fillRect(PX,PY+PH-110,PW,110);
+        for(let k=0;k<56;k++){const x=PX+40+k*14.3,hgt=8+42*Math.abs(Math.sin(k*.55+t*7.5)*Math.sin(k*.17+t*2.3))*(.5+.5*Math.sin(t*3+k*.2));
+          ctx.globalAlpha=A*wa;ctx.fillStyle=GOLD;rr(x,PY+PH-55-hgt/2,7,hgt,3.5);ctx.fill();}ctx.globalAlpha=A;}}
+  }
+  // 단계가 바뀔 때 번쩍임
+  for(const m of M.slice(1)){const q=seg(t,m,m+.25);if(q>0&&q<1){ctx.fillStyle=`rgba(255,255,255,${(.35*(1-q)).toFixed(3)})`;ctx.fillRect(PX,PY,PW,PH);}}
+  ctx.restore();ctx.restore();
+  // 화면 안 이름표
+  const la=A*Math.min(E.out(seg(t,M[mode]+.05,M[mode]+.35)),mode<4?1-E.in(seg(t,M[mode+1]-.2,M[mode+1])):1);
+  const lab=MODE_LABEL[mode],lw=meas(lab,30,750,-.01)+44;
+  ctx.save();ctx.globalAlpha=la;ctx.fillStyle='rgba(5,7,13,.72)';rr(PX+24,PY+24,lw,58,29);ctx.fill();ctx.restore();
+  txt(lab,PX+46,PY+63,30,750,INK,'left',la,-.01);
+}
+
+/* =========================================================
+   4. 값은 폭락 — 동전 280개가 1개로
+   ========================================================= */
+const KEEP=150,CX0=160,CY0=640;
+function coin(x,y,r,a){if(a<=0||r<=.3)return;ctx.save();ctx.globalAlpha=a;const g=ctx.createRadialGradient(x-r*.35,y-r*.4,r*.1,x,y,r);g.addColorStop(0,'#fff3c4');g.addColorStop(.6,'#ffc83d');g.addColorStop(1,'#c98a10');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,6.283);ctx.fill();ctx.strokeStyle='rgba(120,70,0,.6)';ctx.lineWidth=Math.max(1,r*.1);ctx.beginPath();ctx.arc(x,y,r*.74,0,6.283);ctx.stroke();ctx.restore();
+  if(r>=13)txt('$',x,y+r*.36,r*1.0,850,'rgba(110,60,0,.85)','center',a,0);}
+function costScene(t){
+  if(t<S.cost-.05||t>S.adopt+.05)return;const A=sceneA(t,S.cost,S.adopt);if(A<=0)return;
+  const kx=CX0+(KEEP%20)*40,ky=CY0+Math.floor(KEEP/20)*40;
+  const ga=A*E.out(seg(t,37.3,37.8));
+  if(ga>0){ctx.save();ctx.globalAlpha=ga*.6;ctx.setLineDash([10,10]);ctx.strokeStyle='rgba(255,200,61,.7)';ctx.lineWidth=2.5;rr(CX0-30,CY0-30,820,580,30);ctx.stroke();ctx.restore();
+    txt('$20',CX0-10,CY0-44,40,850,'rgba(255,200,61,.8)','left',ga,-.01);}
+  TL.COIN.forEach((c,i)=>{if(i===KEEP)return;const x=CX0+(i%20)*40,y=CY0+Math.floor(i/20)*40,ap=E.back(seg(t,c.a,c.a+.3)),q=E.in(seg(t,c.c,c.c+.55));
+    if(q>=1)return;coin(lerp(x,kx,q),lerp(y,ky,q),15*ap*lerp(1,.3,q),A*Math.min(1,ap)*(1-q));});
+  const g2=E.io(seg(t,37.0,37.7)),c=TL.COIN[KEEP],ap=E.back(seg(t,c.a,c.a+.3));
+  coin(lerp(kx,540,g2),lerp(ky,880,g2),lerp(15*ap,64,g2),A*Math.min(1,ap));
+  const la=A*E.out(seg(t,37.6,38.0));txt('$0.07',540,1012,52,850,GOLD,'center',la,-.02);
+  const bp=seg(t,38.1,38.5);if(bp>0){ctx.save();ctx.translate(540,1190);const sc=E.back(bp);ctx.scale(sc,sc);ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=26;txt('÷ 280',0,0,120,850,INK,'center',A,-.03);ctx.restore();}
+}
+
+/* =========================================================
+   5. 모두의 도구 — 100명 중 53명
+   ========================================================= */
+function adoptScene(t){
+  if(t<S.adopt-.05||t>S.limit+.05)return;const A=sceneA(t,S.adopt,S.limit);if(A<=0)return;
+  let lit=0;for(const x of TL.LIT)if(t>=x)lit++;
+  for(let i=0;i<100;i++){const x=252+(i%10)*72,y=600+Math.floor(i/10)*66,ap=A*E.out(seg(t,41.1+i*.006,41.5+i*.006)),on=i<lit,lt=on?TL.LIT[i]:0,pop=on?1+.35*Math.sin(Math.PI*seg(t,lt,lt+.25)):1;
+    person(x,y,.95*pop,on?GREEN:'rgba(255,255,255,.18)',ap);}
+  const ca=A*E.out(seg(t,41.5,41.9));
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=24;rich([[String(lit),110,850,GREEN],['%',64,800,GREEN]],540,1400,ca,'center');ctx.restore();
+}
+
+/* =========================================================
+   6. 그래도 아직 — 시계 읽기
+   ========================================================= */
+function limitScene(t){
+  if(t<S.limit-.05||t>S.twist+.05)return;const A=sceneA(t,S.limit,S.twist);if(A<=0)return;
+  const cx=330,cy=860,R=190,ca=A*E.out(seg(t,49.1,49.5));
+  ctx.save();ctx.globalAlpha=ca;ctx.fillStyle='#eef0f5';ctx.beginPath();ctx.arc(cx,cy,R,0,6.283);ctx.fill();ctx.strokeStyle='#8e8e93';ctx.lineWidth=8;ctx.stroke();
+  for(let k=0;k<60;k++){const q=k/60*6.283,l=k%5?10:22;ctx.strokeStyle='#2a2d36';ctx.lineWidth=k%5?2:5;ctx.beginPath();ctx.moveTo(cx+Math.sin(q)*(R-14),cy-Math.cos(q)*(R-14));ctx.lineTo(cx+Math.sin(q)*(R-14-l),cy-Math.cos(q)*(R-14-l));ctx.stroke();}
+  ctx.restore();
+  [[12,0],[3,90],[6,180],[9,270]].forEach(([n,d])=>{const q=d*Math.PI/180;txt(String(n),cx+Math.sin(q)*(R-58),cy-Math.cos(q)*(R-58)+14,38,800,'#1b1e26','center',ca,0);});
+  const hA=(4+41/60)*30*Math.PI/180,mA=41*6*Math.PI/180;
+  ctx.save();ctx.globalAlpha=ca;ctx.lineCap='round';ctx.strokeStyle='#1b1e26';ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.sin(hA)*95,cy-Math.cos(hA)*95);ctx.stroke();
+  ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.sin(mA)*150,cy-Math.cos(mA)*150);ctx.stroke();ctx.fillStyle=RED;ctx.beginPath();ctx.arc(cx,cy,10,0,6.283);ctx.fill();ctx.restore();
+  // AI의 추측
+  const G=[['10:20 ?',49.6],['8:22 ?',50.3],['4:41 !',51.0]];
+  const ba=A*E.out(seg(t,49.5,49.9));
+  ctx.save();ctx.globalAlpha=ba;ctx.fillStyle='rgba(255,255,255,.08)';rr(580,700,400,200,40);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.16)';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
+  txt('AI의 답',610,752,28,700,GREEN,'left',ba,0);
+  let gi=0;for(let i=0;i<G.length;i++)if(t>=G[i][1])gi=i;
+  const gq=seg(t,G[gi][1],G[gi][1]+.2),jit=gi<2?6*Math.sin(t*40):0;
+  txt(G[gi][0],780+jit,860,72,850,gi<2?'#ff9d94':GREEN,'center',ba*gq,-.02);
+  // 정답률 막대
+  const pa=A*E.out(seg(t,51.6,52.0)),pp=E.out(seg(t,51.7,52.6));
+  txt('최고 수준 AI의 아날로그 시계 정답률',110,1170,30,700,'#c7c7cc','left',pa,-.01);
+  ctx.save();ctx.globalAlpha=pa;ctx.fillStyle='rgba(255,255,255,.08)';rr(110,1196,860,56,28);ctx.fill();ctx.fillStyle=RED;rr(110,1196,Math.max(56,860*.501*pp),56,28);ctx.fill();ctx.restore();
+  txt((50.1*pp).toFixed(1)+'%',110+860*.501*pp+20,1238,40,850,INK,'left',pa,-.02);
+  txt('동전 던지기 수준',935,1300,28,650,SUB,'right',pa*E.out(seg(t,52.4,52.8)),0);
+}
+
+/* =========================================================
+   반전 — 이 영상도 AI가 만들었습니다
+   ========================================================= */
+function check(x,y,col,a){ctx.save();ctx.globalAlpha=a;ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,20,0,6.283);ctx.fill();ctx.strokeStyle='#0b0d12';ctx.lineWidth=5;ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.beginPath();ctx.moveTo(x-9,y);ctx.lineTo(x-2,y+7);ctx.lineTo(x+10,y-7);ctx.stroke();ctx.restore();}
+function twist(t){
+  if(t<S.twist)return;const A=1-sm(t,59.0,59.4);if(A<=0)return;
+  const L=(parts,y,tin,sz)=>{const i=E.out(seg(t,tin,tin+.5));if(i<=0)return;ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=28;rich(parts,540,y+(1-i)*22,i*A);ctx.restore();};
+  L([['그리고 이 영상도',60,750,'#c7c7cc']],560,54.15);
+  const b=E.out(seg(t,54.75,55.3));
+  if(b>0){ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=36;ctx.translate(540,700);const sc=lerp(.9,1,E.back(b));ctx.scale(sc,sc);
+    const g=ctx.createLinearGradient(-420,0,420,0);g.addColorStop(0,BLUE);g.addColorStop(.5,'#ffffff');g.addColorStop(1,GOLD);
+    ctx.globalAlpha=b*A;ctx.font='850 104px Pretendard';ctx.letterSpacing='-4px';ctx.textAlign='center';ctx.fillStyle=g;ctx.fillText('AI가 만들었습니다',0,0);ctx.restore();}
+  [['자료조사',BLUE],['대본',VIO],['그림 · 애니메이션',GREEN],['음악',GOLD]].forEach(([s,col],i)=>{
+    const x=i%2?560:120,y=800+Math.floor(i/2)*124,tin=55.5+i*.22,a=A*E.out(seg(t,tin,tin+.35)),pop=lerp(.9,1,E.back(seg(t,tin,tin+.35)));
+    if(a<=0)return;ctx.save();ctx.translate(x+200,y+50);ctx.scale(pop,pop);ctx.translate(-x-200,-y-50);ctx.globalAlpha=a;ctx.fillStyle='rgba(255,255,255,.07)';rr(x,y,400,100,30);ctx.fill();ctx.strokeStyle=col;ctx.globalAlpha=a*.5;ctx.lineWidth=2;ctx.stroke();ctx.restore();
+    check(x+52,y+50,col,a);txt(s,x+90,y+62,36,800,INK,'left',a,-.02,290);});
+  txt('기획은 사람, 제작은 AI (Claude)',540,1112,34,700,'#c7c7cc','center',A*E.out(seg(t,56.5,57.0)),-.01);
+  L([['다음 10년엔 ',58,800,INK],['무엇을',62,850,GOLD],[' 만들까요?',58,800,INK]],1330,57.15);
+  L([['댓글로 예상해 주세요',34,650,'#c7c7cc']],1402,57.55);
+}
+
+window.renderFrame=t=>{
+  ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';ctx.filter='none';
+  bg(t);
+  hook(t);scaleScene(t);chatScene(t);modalScene(t);costScene(t);adoptScene(t);limitScene(t);twist(t);
+  if(t>59.42){ctx.save();ctx.globalAlpha=1;hook(0,sm(t,59.45,59.95));ctx.restore();}     // 첫 장면으로 이어지는 반복
+  /* 장면 이름 · 제목 · 자막 */
+  chip(t,S.scale+.05,S.chat-.45,'1 · 커지는 AI',BLUE);
+  chip(t,S.chat+.05,S.modal-.45,'2 · ChatGPT',GREEN);
+  chip(t,S.modal+.05,S.cost-.45,'3 · 글에서 영상까지',PINK);
+  chip(t,S.cost+.05,S.adopt-.45,'4 · 값은 폭락',GOLD);
+  chip(t,S.adopt+.05,S.limit-.45,'5 · 모두의 도구',GREEN);
+  chip(t,S.limit+.05,S.twist-.45,'6 · 그래도 아직',RED);
+  head(t,S.scale+.05,S.chat-.45,[['2017년 ',64,800,INK],['트랜스포머',66,850,BLUE],[' 이후',64,800,INK]],[['AI는 ',64,800,INK],['거대해졌습니다',66,850,GOLD]]);
+  head(t,S.chat+.05,S.modal-.45,[['2022년 11월, ',64,800,INK],['ChatGPT',66,850,GREEN]],[['1억 명까지 ',64,800,INK],['단 2개월',66,850,GOLD]]);
+  head(t,S.modal+.05,S.cost-.45,[['AI가 만드는 것이',64,800,INK]],[['글에서 ',64,800,INK],['영상과 소리로',66,850,GOLD]]);
+  head(t,S.cost+.05,S.adopt-.45,[['같은 성능인데',64,800,INK]],[['값은 ',64,800,INK],['폭락했습니다',66,850,GOLD]]);
+  head(t,S.adopt+.05,S.limit-.45,[['출시 3년 만에',64,800,INK]],[['절반 넘게 ',64,800,INK],['써 봤습니다',66,850,GREEN]]);
+  head(t,S.limit+.05,S.twist-.45,[['금메달 따는 AI도',64,800,INK]],[['시계는 ',64,800,INK],['절반만 맞힙니다',66,850,RED]]);
+  caption(t,3.2,4.2,[['그리고 지금은 ',46,700,INK],['영상과 음악까지',48,850,GOLD]],'10년 동안 무슨 일이? (이 영상에도 비밀이 하나 있어요)');
+  caption(t,4.9,7.0,[['GPT-1 · 2018년 · 매개변수 ',44,700,INK],['1억 1,700만',48,850,BLUE]],'매개변수 = AI가 학습하며 조절하는 숫자');
+  caption(t,7.4,9.3,[['GPT-2 · 2019년 · ',46,700,INK],['15억',48,850,VIO]],'원의 넓이 = 매개변수 수');
+  caption(t,9.7,12.1,[['GPT-3 · 2020년 · ',46,700,INK],['1,750억',48,850,GOLD]],'2년 만에 약 1,500배 · 학습 계산량은 해마다 4~5배 (Epoch AI)');
+  caption(t,13.0,17.2,[['사용자 ',46,700,INK],['1억 명',48,850,GREEN],['까지 걸린 시간',46,700,INK]],'UBS 추정 (2023년 2월) · 월간 사용자 기준');
+  caption(t,17.8,21.1,[['그리고 지금은 ',46,700,INK],['매주 9억 명',48,850,GOLD]],'OpenAI 발표 · 2026년 2월');
+  caption(t,21.9,26.2,[['한 줄의 글로 ',46,700,INK],['그림까지',48,850,VIO]],'2022년 DALL·E 2 · Midjourney · Stable Diffusion');
+  caption(t,26.6,32.5,[['그림이 움직이고, ',46,700,INK],['소리까지',48,850,GOLD]],'2023년 몇 초 → 2024년 1분 → 2025년 소리');
+  caption(t,33.4,36.0,[['GPT-3.5 수준 AI 사용료 ',44,700,INK],['$20',48,850,GOLD]],'토큰(글자 조각) 100만 개당 · 2022년 11월');
+  caption(t,36.4,40.5,[['약 2년 뒤 ',46,700,INK],['$0.07',48,850,GOLD],[' · 280분의 1',46,700,INK]],'2024년 10월 · Stanford AI Index 2025');
+  caption(t,41.4,45.0,[['인구의 ',46,700,INK],['53%',48,850,GREEN],['가 생성형 AI 사용',46,700,INK]],'출시 3년 만 · Stanford AI Index 2026');
+  caption(t,45.4,48.5,[['PC나 인터넷보다 ',46,700,INK],['빠른 확산',48,850,GREEN]],'보급 속도 비교 · Stanford AI Index 2026');
+  caption(t,49.4,53.5,[['그래서 ',46,700,INK],['확인은 사람의 몫',48,850,GOLD]],'정답률 50.1% · Stanford AI Index 2026');
+  progress(t);
+};
+window.ready=(async()=>{await Promise.all([550,600,650,700,750,800,850].map(w=>document.fonts.load(w+' 40px Pretendard','가A1%$·→×÷')));await document.fonts.ready;renderFrame(0);return true;})();
+</script>
+</body>
+</html>

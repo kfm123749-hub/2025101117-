@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Relativity in 60 Seconds</title>
+<link rel="stylesheet" href="node_modules/katex/dist/katex.min.css">
+<script src="node_modules/katex/dist/katex.min.js"></script>
+<style>
+@font-face{font-family:"Pretendard";font-weight:45 920;font-style:normal;
+  src:url("node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2") format("woff2-variations");}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:#000;overflow:hidden}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden;font-family:"Pretendard",sans-serif;color:#f5f5f7}
+canvas{position:absolute;left:0;top:0;width:1080px;height:1920px}
+.tx{position:absolute;left:0;width:1080px;text-align:center;opacity:0;white-space:nowrap}
+.katex{font-size:1em}
+</style>
+<script src="timeline.js"></script>
+</head>
+<body>
+<div id="stage"><canvas id="c" width="1080" height="1920"></canvas><div id="ui"></div></div>
+<script>
+/* =========================================================
+   60초 상대성 이론 — 쇼츠 (1080×1920, 60fps)
+   GPS 훅 → 특수(빛 속도 불변 · 빛 시계 · γ 곡선) → 일반(등가 원리 · 휜 시공간 · 중력 시간 지연) → GPS 결말
+   ========================================================= */
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const W=1080,HH=1920,DUR=60,S=TL.S,LC=TL.LC,EV=TL.ev;
+const cl=x=>Math.min(1,Math.max(0,x)),lerp=(a,b,s)=>a+(b-a)*s,seg=(t,a,b)=>cl((t-a)/(b-a));
+const sm=(x,a,b)=>{const p=cl((x-a)/(b-a));return p*p*(3-2*p)};
+const E={out:x=>1-Math.pow(1-x,3),in:x=>x*x*x,io:x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,
+  back:x=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)},expo:x=>x>=1?1:1-Math.pow(2,-10*x)};
+const io=(t,a,b,din=.5,dout=.35)=>E.out(seg(t,a,a+din))*(1-E.in(seg(t,b,b+dout)));
+const INK='#f5f5f7',SUB='#a1a1a6',SR='#5ac8fa',GR='#ff9f0a',GOLD='#ffc83d',LIGHT='#fff1a8',RED='#ff5a4f',GREEN='#30d158';
+function txt(s,x,y,size,weight,color,align='left',alpha=1,ls=-0.02,maxW=960){
+  if(alpha<=0.003)return 0;{const w0=meas(s,size,weight,ls);if(w0>maxW)size=size*maxW/w0;}ctx.save();ctx.globalAlpha*=alpha;ctx.font=`${weight} ${size}px Pretendard`;ctx.letterSpacing=(ls*size)+'px';
+  ctx.textAlign=align;ctx.fillStyle=color;ctx.fillText(s,x,y);const w=ctx.measureText(s).width;ctx.restore();return w;}
+function meas(s,size,weight,ls=-0.02){ctx.save();ctx.font=`${weight} ${size}px Pretendard`;ctx.letterSpacing=(ls*size)+'px';const w=ctx.measureText(s).width;ctx.restore();return w;}
+function rich(parts,x,y,alpha=1,align='center',maxW=920){{const tw=parts.reduce((a,p)=>a+meas(p[0],p[1],p[2]),0);if(tw>maxW){const f=maxW/tw;parts=parts.map(p=>[p[0],p[1]*f,p[2],p[3]]);}}const ws=parts.map(p=>meas(p[0],p[1],p[2]));let cx=align==='center'?x-ws.reduce((a,b)=>a+b,0)/2:align==='right'?x-ws.reduce((a,b)=>a+b,0):x;
+  parts.forEach((p,i)=>{txt(p[0],cx,y,p[1],p[2],p[3],'left',alpha);cx+=ws[i];});return ws.reduce((a,b)=>a+b,0);}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);}
+function glowDot(x,y,r,col,a=1,halo=4){const g=ctx.createRadialGradient(x,y,0,x,y,r*halo);g.addColorStop(0,col.replace('A',(.75*a).toFixed(3)));g.addColorStop(.25,col.replace('A',(.3*a).toFixed(3)));g.addColorStop(1,col.replace('A','0'));
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r*halo,0,6.283);ctx.fill();ctx.fillStyle=`rgba(255,255,255,${a})`;ctx.beginPath();ctx.arc(x,y,r*.55,0,6.283);ctx.fill();}
+function countBefore(arr,t,after=-1){let n=0;for(const x of arr)if(x<=t&&x>after)n++;return n;}
+function lastBefore(arr,t){let r=-99;for(const x of arr)if(x<=t)r=x;return r;}
+
+/* ---------- 배경 ---------- */
+let sd=1905;const rnd=()=>(sd=(sd*16807)%2147483647)/2147483647;
+const STARS=[...Array(230)].map(()=>({x:rnd()*W,y:rnd()*HH,r:.5+rnd()*1.5,p:rnd()*6.28,f:.4+rnd()}));
+const starShift=t=>t<8?0:t<13.2?260*(t-8):260*5.2;
+function bg(t){
+  ctx.fillStyle='#04060c';ctx.fillRect(0,0,W,HH);
+  const gr=sm(t,29.6,31)*(1-sm(t,55.5,57)),cyan=1-gr;
+  let g=ctx.createRadialGradient(150,170,0,150,170,980);g.addColorStop(0,`rgba(60,150,255,${(.16*cyan+.05).toFixed(3)})`);g.addColorStop(.6,'rgba(60,150,255,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);
+  g=ctx.createRadialGradient(950,1800,0,950,1800,950);g.addColorStop(0,`rgba(255,150,40,${(.04+.13*gr).toFixed(3)})`);g.addColorStop(.6,'rgba(255,150,40,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);
+  const sh=starShift(t);
+  for(const s of STARS){const a=.18+.5*Math.abs(Math.sin(s.p+t*s.f)),x=((s.x-sh*s.r*.6)%W+W)%W;
+    if(t>8&&t<13.2){ctx.strokeStyle=`rgba(255,255,255,${(a*.7).toFixed(3)})`;ctx.lineWidth=s.r;ctx.beginPath();ctx.moveTo(x,s.y);ctx.lineTo(x+22*s.r,s.y);ctx.stroke();}
+    else{ctx.fillStyle=`rgba(255,255,255,${a.toFixed(3)})`;ctx.beginPath();ctx.arc(x,s.y,s.r,0,6.283);ctx.fill();}}
+}
+/* ---------- 공통 UI ---------- */
+function progress(t){ctx.fillStyle='rgba(255,255,255,.08)';rr(80,136,920,6,3);ctx.fill();
+  const g=ctx.createLinearGradient(80,0,1000,0);g.addColorStop(0,SR);g.addColorStop(.5,'#bf8cff');g.addColorStop(1,GR);ctx.fillStyle=g;rr(80,136,920*t/DUR,6,3);ctx.fill();}
+function chip(t,tin,tout,s,col){const a=io(t,tin,tout);if(a<=0)return;const w=meas(s,30,700,0)+56;
+  ctx.save();ctx.globalAlpha=a;ctx.fillStyle='rgba(255,255,255,.08)';rr(80,196,w,62,31);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.14)';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
+  txt(s,108,238,30,700,col,'left',a,0);}
+function head(t,tin,tout,l1,l2){const a=io(t,tin,tout);if(a<=0)return;const d=(1-E.out(seg(t,tin,tin+.55)))*30;
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=24;rich(l1,80,352+d,a,'left');if(l2)rich(l2,80,436+d,a,'left');ctx.restore();}
+function caption(t,tin,tout,parts,sub,y=1500){const a=io(t,tin,tout,.45,.3);if(a<=0)return;const d=(1-E.out(seg(t,tin,tin+.45)))*20;
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=26;rich(parts,540,y+d,a,'center',800);if(sub)txt(sub,540,y+54+d,29,550,'#c7c7cc','center',a,-.01,800);ctx.restore();}
+const ui=document.getElementById('ui');
+function el(html,style){const d=document.createElement('div');d.className='tx';d.innerHTML=html.replace(/\$([^$]+)\$/g,(_,m)=>katex.renderToString(m,{throwOnError:true}));Object.assign(d.style,style);ui.appendChild(d);return d;}
+function domVis(d,a,dy=0,sc=1){d.style.opacity=a.toFixed(4);d.style.transform=`translateY(${dy.toFixed(1)}px) scale(${sc.toFixed(4)})`;}
+
+/* ---------- 작은 아이콘 ---------- */
+function iconLightClock(cx,cy,s,t,col,a){
+  ctx.save();ctx.globalAlpha=a;ctx.strokeStyle=col;ctx.lineWidth=5*s;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(cx-70*s,cy-55*s);ctx.lineTo(cx+70*s,cy-55*s);ctx.moveTo(cx-70*s,cy+55*s);ctx.lineTo(cx+70*s,cy+55*s);ctx.stroke();
+  const ph=(t*1.1)%1,xs=[-60,-20,20,60];ctx.strokeStyle='rgba(255,241,168,.55)';ctx.lineWidth=2.5*s;ctx.beginPath();
+  for(let i=0;i<4;i++){const x=cx+xs[i]*s,y=cy+(i%2?-50:50)*s;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();
+  const k=Math.floor(ph*3),f=ph*3-k,x=cx+lerp(xs[k],xs[k+1],f)*s,y=cy+lerp(k%2?-50:50,k%2?50:-50,f)*s;ctx.restore();
+  glowDot(x,y,8*s,'rgba(255,241,168,A)',a,3);
+}
+function iconWell(cx,cy,s,t,col,a){
+  ctx.save();ctx.globalAlpha=a;
+  for(let i=0;i<5;i++){const r=(110-20*i)*s,dy=(i*i*4)*s;ctx.strokeStyle=col;ctx.globalAlpha=a*(.25+.15*i);ctx.lineWidth=2.5*s;ctx.beginPath();ctx.ellipse(cx,cy-30*s+dy,r,r*.32,0,0,6.283);ctx.stroke();}
+  ctx.globalAlpha=a;const g=ctx.createRadialGradient(cx,cy+40*s,0,cx,cy+40*s,26*s);g.addColorStop(0,'#fff3c4');g.addColorStop(1,col);ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy+38*s,22*s,0,6.283);ctx.fill();
+  const ang=t*2.2;ctx.fillStyle='#8fd2ff';ctx.beginPath();ctx.arc(cx+86*s*Math.cos(ang),cy-6*s+28*s*Math.sin(ang),9*s,0,6.283);ctx.fill();ctx.restore();
+}
+function theoryCard(x,y,w,h,col,icon,year,title,sub,a,dx,t){
+  if(a<=0)return;ctx.save();ctx.translate(dx,0);ctx.globalAlpha=a;
+  ctx.fillStyle='rgba(14,18,30,.82)';rr(x,y,w,h,44);ctx.fill();ctx.strokeStyle=col;ctx.globalAlpha=a*.45;ctx.lineWidth=2;ctx.stroke();ctx.globalAlpha=a;
+  icon(x+150,y+h/2,1,t,col,a);
+  if(year){const yw=meas(year,26,800,0)+36;ctx.fillStyle=col;ctx.globalAlpha=a*.18;rr(x+300,y+h/2-92,yw,44,22);ctx.fill();ctx.globalAlpha=a;txt(year,x+318,y+h/2-61,26,800,col,'left',1,0);}
+  txt(title,x+300,y+h/2+(year?2:-8),50,850,col,'left',1,-.03,w-360);
+  txt(sub,x+300,y+h/2+(year?56:46),32,650,INK,'left',1,-.02,w-360);ctx.restore();
+}
+
+/* =========================================================
+   0. 훅 — GPS 위치가 하루 만에 11.5km 어긋남
+   ========================================================= */
+const MAP={x:80,y:540,w:920,h:860};
+const ROADS=[];{let s2=7;const r2=()=>(s2=(s2*16807)%2147483647)/2147483647;
+  for(let i=0;i<9;i++)ROADS.push({pts:[...Array(6)].map((_,k)=>[MAP.x-40+k*200+(r2()-.5)*60,MAP.y+60+i*100+(r2()-.5)*40]),w:i%3===0?7:3});
+  for(let i=0;i<8;i++)ROADS.push({pts:[...Array(6)].map((_,k)=>[MAP.x+40+i*125+(r2()-.5)*50,MAP.y-40+k*190+(r2()-.5)*50]),w:i%3===1?7:3});}
+const SAT=[215,805],PH=[640,1150],KMPX=20,DIRX=(PH[0]-SAT[0]),DIRY=(PH[1]-SAT[1]),R0=Math.hypot(DIRX,DIRY),UX=DIRX/R0,UY=DIRY/R0,TH=Math.atan2(DIRY,DIRX);
+function drawSat(x,y,s,a){ctx.save();ctx.globalAlpha=a;ctx.translate(x,y);ctx.rotate(-.5);ctx.fillStyle='#4d7bd6';ctx.fillRect(-46*s,-9*s,28*s,18*s);ctx.fillRect(18*s,-9*s,28*s,18*s);
+  ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1;ctx.strokeRect(-46*s,-9*s,28*s,18*s);ctx.strokeRect(18*s,-9*s,28*s,18*s);ctx.fillStyle='#e9eef6';ctx.fillRect(-15*s,-13*s,30*s,26*s);ctx.restore();}
+function hook(t){
+  const A=1-E.in(seg(t,4.15,4.65));if(A<=0)return;
+  const ap=E.out(seg(t,-.35,.3));
+  ctx.save();ctx.globalAlpha=A*ap;ctx.translate(0,(1-ap)*30);
+  rr(MAP.x,MAP.y,MAP.w,MAP.h,44);ctx.fillStyle='#0b1222';ctx.fill();ctx.save();ctx.clip();
+  ctx.strokeStyle='rgba(60,120,220,.35)';ctx.lineWidth=70;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(MAP.x-40,MAP.y+300);ctx.bezierCurveTo(400,700,600,1150,MAP.x+MAP.w+40,1080);ctx.stroke();
+  for(const r of ROADS){ctx.strokeStyle=r.w>4?'rgba(150,170,210,.26)':'rgba(150,170,210,.12)';ctx.lineWidth=r.w;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();
+    r.pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();}
+  // 축척 5 km
+  ctx.strokeStyle='rgba(255,255,255,.6)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(860,1362);ctx.lineTo(860+5*KMPX,1362);ctx.moveTo(860,1354);ctx.lineTo(860,1370);ctx.moveTo(860+5*KMPX,1354);ctx.lineTo(860+5*KMPX,1370);ctx.stroke();
+  txt('5 km',860+2.5*KMPX,1346,24,700,'#c7c7cc','center',1,0);
+  const dayP=E.io(seg(t,.5,3.5)),e=11.54*dayP,R=R0+e*KMPX;   // 오차는 경과 시간에 정비례
+  // 실제 거리(파랑)와 시계 오차로 계산된 거리(빨강)
+  ctx.strokeStyle='rgba(90,200,250,.5)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(SAT[0],SAT[1],R0,TH-.42,TH+.42);ctx.stroke();
+  ctx.setLineDash([12,10]);ctx.strokeStyle='rgba(90,200,250,.75)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(SAT[0],SAT[1]);ctx.lineTo(PH[0],PH[1]);ctx.stroke();ctx.setLineDash([]);
+  for(let k=0;k<3;k++){const q=((t*.9)+k/3)%1;ctx.fillStyle=`rgba(255,241,168,${(.9*(1-q*.6)).toFixed(3)})`;ctx.beginPath();ctx.arc(lerp(SAT[0],PH[0],q),lerp(SAT[1],PH[1],q),5,0,6.283);ctx.fill();}
+  if(e>.05){ctx.strokeStyle='rgba(255,90,79,.9)';ctx.lineWidth=4;ctx.beginPath();ctx.arc(SAT[0],SAT[1],R,TH-.36,TH+.36);ctx.stroke();
+    const qx=SAT[0]+UX*R,qy=SAT[1]+UY*R;ctx.strokeStyle='rgba(255,90,79,.9)';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(PH[0],PH[1]);ctx.lineTo(qx,qy);ctx.stroke();
+    ctx.fillStyle='#ff5a4f';ctx.beginPath();ctx.arc(qx,qy,9,0,6.283);ctx.fill();
+    const mx=(PH[0]+qx)/2+UY*70,my=(PH[1]+qy)/2-UX*70;ctx.fillStyle='rgba(24,8,8,.9)';rr(mx-92,my-30,184,56,28);ctx.fill();ctx.strokeStyle='rgba(255,138,128,.7)';ctx.lineWidth=2;ctx.stroke();
+    txt('+'+e.toFixed(1)+' km',mx,my+10,30,850,'#ff9d94','center',1,0);}
+  drawSat(SAT[0],SAT[1],1.2,1);txt('GPS satellite',SAT[0]+10,SAT[1]-46,26,750,'#c7d6f2','center',1,0);
+  const pu=(t*1.2)%1;ctx.strokeStyle=`rgba(90,200,250,${(.8*(1-pu)).toFixed(3)})`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(PH[0],PH[1],14+40*pu,0,6.283);ctx.stroke();
+  ctx.fillStyle=SR;ctx.beginPath();ctx.arc(PH[0],PH[1],12,0,6.283);ctx.fill();
+  txt('Your phone',PH[0]-34,PH[1]+44,28,750,SR,'right',1,0);
+  txt('Measured distance',SAT[0]+UX*(R0+11.54*KMPX)-20,SAT[1]+UY*(R0+11.54*KMPX)+44,26,750,'#ff9d94','right',E.out(seg(t,1.2,1.6)),0);
+  ctx.restore();
+  ctx.fillStyle='rgba(5,8,16,.78)';rr(MAP.x+24,MAP.y+24,MAP.w-48,118,30);ctx.fill();
+  txt('Time passed',MAP.x+60,MAP.y+70,26,650,SUB,'left',1,0);txt(Math.floor(24*dayP+1e-6)+' h',MAP.x+60,MAP.y+122,48,850,INK,'left',1,-.03);
+  txt('Distance error',MAP.x+MAP.w-60,MAP.y+70,26,650,SUB,'right',1,0);txt(e.toFixed(1)+' km',MAP.x+MAP.w-60,MAP.y+122,48,850,'#ff8a80','right',1,-.03);
+  ctx.restore();
+  const h1=E.out(seg(t,-.3,.25)),h2=E.out(seg(t,.25,.75));
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=24;
+  rich([['Without relativity,',56,800,INK]],80,318+(1-h1)*28,h1*A,'left');
+  rich([['GPS would misjudge distances',56,800,INK]],80,390+(1-h1)*28,h1*A,'left');
+  rich([['by ',56,800,INK],['11 km (7 mi)',60,850,'#ff8a80'],[' every day',56,800,INK]],80,462+(1-h2)*28,h2*A,'left');ctx.restore();
+  const wa=io(t,3.55,4.4,.3,.25);if(wa>0){ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=30;ctx.translate(540,1540);const sc=lerp(.85,1,E.back(seg(t,3.55,3.95)));ctx.scale(sc,sc);txt('But why?',0,0,66,850,INK,'center',wa,-.03);ctx.restore();}
+}
+/* ---------- 1. 두 이론 소개 ---------- */
+function title(t){
+  if(t<S.title-.1||t>S.c+.2)return;
+  const out=1-E.in(seg(t,7.45,7.85));
+  head(t,S.title+.05,7.63,[["Time doesn't tick",64,800,INK]],[['the same',66,850,GOLD],[' for everyone',64,800,INK]]);
+  const a1=E.out(seg(t,5.0,5.55))*out,a2=E.out(seg(t,5.6,6.15))*out;
+  theoryCard(80,580,920,330,SR,iconLightClock,'1905','Special Relativity','Moving clocks tick slower',a1,-(1-a1)*120,t);
+  theoryCard(80,950,920,330,GR,iconWell,'1915','General Relativity','Clocks near mass tick slower',a2,(1-a2)*120,t);
+  caption(t,6.4,7.7,[["Einstein's two big ideas in ",44,700,INK],['60 seconds',46,850,GOLD]]);
+}
+/* =========================================================
+   2. 빛의 속도는 누가 재도 같다 (8–13초)
+   ========================================================= */
+function drawShip(x,y,t){
+  ctx.save();ctx.translate(x,y);
+  const fl=1+.18*Math.sin(t*40)+.1*Math.sin(t*63);ctx.fillStyle='rgba(255,150,60,.85)';ctx.beginPath();ctx.moveTo(-118,-18);ctx.lineTo(-118-80*fl,0);ctx.lineTo(-118,18);ctx.fill();
+  ctx.fillStyle='rgba(255,230,160,.9)';ctx.beginPath();ctx.moveTo(-118,-9);ctx.lineTo(-118-40*fl,0);ctx.lineTo(-118,9);ctx.fill();
+  const g=ctx.createLinearGradient(0,-40,0,40);g.addColorStop(0,'#e8eef8');g.addColorStop(1,'#8a97ad');ctx.fillStyle=g;
+  ctx.beginPath();ctx.moveTo(-120,-34);ctx.lineTo(70,-34);ctx.quadraticCurveTo(130,-30,150,0);ctx.quadraticCurveTo(130,30,70,34);ctx.lineTo(-120,34);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#5a6880';ctx.beginPath();ctx.moveTo(-100,-34);ctx.lineTo(-130,-70);ctx.lineTo(-70,-34);ctx.fill();ctx.beginPath();ctx.moveTo(-100,34);ctx.lineTo(-130,70);ctx.lineTo(-70,34);ctx.fill();
+  ctx.fillStyle='#1d2b44';ctx.beginPath();ctx.arc(60,-4,15,0,6.283);ctx.fill();ctx.fillStyle='rgba(90,200,250,.8)';ctx.beginPath();ctx.arc(60,-4,11,0,6.283);ctx.fill();
+  ctx.restore();
+}
+const shipX=t=>-160+210*(t-8),SHIPY=700,FIRE=9.0,BEAM0=shipX(FIRE)+150;
+function cScene(t){
+  if(t<7.9||t>13.3)return;const A=io(t,8.0,12.55,.4,.35);
+  head(t,8.05,12.63,[['The speed of light is',66,800,INK]],[['the same',68,850,SR],[' for everyone',66,800,INK]]);
+  ctx.save();ctx.globalAlpha=A;
+  // 지면과 관찰자
+  ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(60,990);ctx.lineTo(1020,990);ctx.stroke();
+  stick(150,990,140,'#cfd6e4',null);txt('Observer',150,1030,26,700,SUB,'center',1,0);
+  // 빛
+  if(t>FIRE){const xb=Math.min(1140,BEAM0+420*(t-FIRE));
+    const g=ctx.createLinearGradient(BEAM0,0,xb,0);g.addColorStop(0,'rgba(255,241,168,0)');g.addColorStop(1,'rgba(255,241,168,.8)');ctx.strokeStyle=g;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(BEAM0,SHIPY-4);ctx.lineTo(xb,SHIPY-4);ctx.stroke();
+    if(xb<1100){glowDot(xb,SHIPY-4,14,'rgba(255,241,168,A)',1,4);
+      ctx.fillStyle='rgba(20,18,6,.8)';rr(xb-34,SHIPY-90,68,50,25);ctx.fill();txt('c',xb,SHIPY-52,34,850,LIGHT,'center',1,0);}
+    const fp=seg(t,FIRE,FIRE+.4);if(fp<1){ctx.strokeStyle=`rgba(255,241,168,${(1-fp).toFixed(3)})`;ctx.lineWidth=4;ctx.beginPath();ctx.arc(BEAM0,SHIPY-4,10+60*fp,0,6.283);ctx.stroke();}}
+  const sx=shipX(t);drawShip(sx,SHIPY,t);
+  ctx.fillStyle='rgba(8,20,30,.85)';rr(sx-60,SHIPY+56,120,48,24);ctx.fill();ctx.strokeStyle='rgba(90,200,250,.6)';ctx.lineWidth=2;ctx.stroke();txt('0.5c',sx,SHIPY+90,30,850,SR,'center',1,0);
+  ctx.restore();
+  // 덧셈
+  const ea=A*E.out(seg(t,9.55,9.95));
+  if(ea>0){const parts=[['0.5c',60,850,SR],[' + ',56,650,SUB],['c',60,850,LIGHT],[' = ',56,650,SUB],['1.5c ?',60,850,'#ff8a80']];
+    const ws=parts.map(p=>meas(p[0],p[1],p[2])),tot=ws.reduce((a,b)=>a+b,0);let x=540-tot/2;const y=1110;
+    ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=20;parts.forEach((p,i)=>{txt(p[0],x,y,p[1],p[2],p[3],'left',ea*(i===4?1-.55*seg(t,10.3,10.6):1));if(i===4)var x4=x;x+=ws[i];});ctx.restore();
+    const sp=E.out(seg(t,10.25,10.5));if(sp>0){const x4=540-tot/2+ws[0]+ws[1]+ws[2]+ws[3];ctx.strokeStyle=RED;ctx.lineWidth=7;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x4-6,y-20);ctx.lineTo(x4-6+(ws[4]+12)*sp,y-20);ctx.stroke();}
+    const cp=E.back(seg(t,10.5,10.85));if(cp>0){ctx.save();ctx.translate(540,1205);ctx.scale(cp,cp);ctx.fillStyle='rgba(90,200,250,.16)';rr(-150,-50,300,92,46);ctx.fill();ctx.strokeStyle=SR;ctx.lineWidth=2.5;ctx.stroke();
+      rich([['Still ',40,750,INK],['c',56,850,SR]],0,18,ea);ctx.restore();}}
+  // 두 측정값
+  const ga=A*E.out(seg(t,11.0,11.45));
+  if(ga>0)[['Measured from the ground',300],['Measured from the ship',780]].forEach(([s,x],i)=>{const p=E.out(seg(t,11.0+i*.25,11.45+i*.25));
+    ctx.save();ctx.globalAlpha=A*p;ctx.fillStyle='rgba(12,18,30,.88)';rr(x-220,1290,440,120,34);ctx.fill();ctx.strokeStyle='rgba(255,241,168,.45)';ctx.lineWidth=2;ctx.stroke();ctx.restore();
+    txt(s,x,1335,26,650,SUB,'center',A*p,0);txt('c',x,1394,52,850,LIGHT,'center',A*p,0);});
+  caption(t,8.5,10.72,[['A ship at ',46,700,INK],['half light speed',48,850,SR],[' fires a beam',46,700,INK]],'c = the speed of light');
+  caption(t,11.1,12.75,[['Everyone measures ',46,700,INK],['exactly c',48,850,LIGHT]],'c = 299,792,458 m/s in a vacuum');
+}
+function stick(x,feet,h,col,armTo){
+  ctx.save();ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=h*.055;ctx.lineCap='round';ctx.lineJoin='round';
+  const head=feet-h,hr=h*.11;ctx.beginPath();ctx.arc(x,head+hr,hr,0,6.283);ctx.fill();
+  const neck=head+hr*2.2,hip=feet-h*.42;ctx.beginPath();ctx.moveTo(x,neck);ctx.lineTo(x,hip);ctx.moveTo(x,hip);ctx.lineTo(x-h*.14,feet);ctx.moveTo(x,hip);ctx.lineTo(x+h*.14,feet);
+  ctx.moveTo(x,neck+h*.06);ctx.lineTo(x-h*.16,neck+h*.26);
+  if(armTo){ctx.moveTo(x,neck+h*.06);ctx.lineTo(armTo[0],armTo[1]);}else{ctx.moveTo(x,neck+h*.06);ctx.lineTo(x+h*.16,neck+h*.26);}
+  ctx.stroke();ctx.restore();
+}
+/* =========================================================
+   3. 빛 시계 (13–23초)
+   ========================================================= */
+const L=280,TY0=560,TY1=840,BY0=980,BY1=1260,TX=540;
+const botX=t=>t<LC.run0?120:t<LC.run1?120+280*(t-LC.run0):960;
+function bounceY(t,t0,tau,y0,y1){const u=Math.max(0,(t-t0)/tau),k=Math.floor(u),f=u-k;return k%2===0?y1-(y1-y0)*f:y0+(y1-y0)*f;}
+const topY=t=>{const tt=Math.min(t,LC.run1);return tt<LC.ph0?TY1:bounceY(tt,LC.ph0,LC.tau0,TY0,TY1);};
+const botY=t=>{const tt=Math.min(t,LC.run1);return tt<LC.ph0?BY1:tt<LC.run0?bounceY(tt,LC.ph0,LC.tau0,BY0,BY1):bounceY(tt,LC.run0,LC.tau1,BY0,BY1);};
+function mirror(x,y,a,flash,wf=1){ctx.save();ctx.globalAlpha=a;ctx.shadowColor='rgba(150,220,255,.9)';ctx.shadowBlur=14+30*flash;ctx.fillStyle=flash>0?`rgb(${Math.round(lerp(190,255,flash))},${Math.round(lerp(225,255,flash))},255)`:'#bfe3ff';rr(x-78*wf,y-6,156*wf,12,6);ctx.fill();ctx.restore();}
+function clockScene(t){
+  if(t<12.9||t>23.3)return;const A=io(t,13.0,22.55,.4,.35);
+  head(t,13.05,22.63,[['So moving clocks',66,800,INK]],[['tick ',66,800,INK],['slower',68,850,SR]]);
+  // ---- 위: 멈춘 시계 ----
+  const tA=A*(1-sm(t,17.85,18.3));
+  if(tA>0){
+    const fl=Math.max(0,1-(t-lastBefore(EV.topHits,t))/.25);const yp=topY(t),hitTop=yp<=TY0+1;
+    ctx.save();ctx.globalAlpha=tA*.3;ctx.strokeStyle='#bfe3ff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(TX-78,TY0);ctx.lineTo(TX-78,TY1);ctx.moveTo(TX+78,TY0);ctx.lineTo(TX+78,TY1);ctx.stroke();ctx.restore();
+    mirror(TX,TY0,tA,yp<TY0+40?fl:0);mirror(TX,TY1,tA,yp>TY1-40?fl:0);
+    ctx.save();ctx.globalAlpha=tA;const g=ctx.createLinearGradient(0,TY0,0,TY1);ctx.strokeStyle='rgba(255,241,168,.25)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(TX,TY0+6);ctx.lineTo(TX,TY1-6);ctx.stroke();ctx.restore();
+    glowDot(TX,yp,13,'rgba(255,241,168,A)',tA,4);
+    txt('Clock at rest',110,690,40,800,INK,'left',tA,-.02,330);txt('standing still',110,734,26,600,SUB,'left',tA,0);
+    const n=countBefore(EV.topHits,t,LC.run0+1e-6);
+    txt('Mirror hits',935,668,24,650,SUB,'right',tA*E.out(seg(t,14.5,14.9)),0);
+    txt(t<LC.run0?'–':String(n),935,746,72,850,t>=LC.run1?GOLD:INK,'right',tA*E.out(seg(t,14.5,14.9)),-.03);
+  }
+  // ---- 아래: 움직이는 시계 ----
+  const bx=botX(t),yb=botY(t),cw=t<LC.run0?1:lerp(1,.8,E.out(seg(t,LC.run0,LC.run0+.15)));
+  ctx.save();ctx.globalAlpha=A*.3;ctx.strokeStyle='#bfe3ff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(bx-78*cw,BY0);ctx.lineTo(bx-78*cw,BY1);ctx.moveTo(bx+78*cw,BY0);ctx.lineTo(bx+78*cw,BY1);ctx.stroke();ctx.restore();
+  const flb=Math.max(0,1-(t-lastBefore(EV.botHits,t))/.25);
+  // 지그재그 궤적
+  if(t>LC.run0){ctx.save();ctx.globalAlpha=A;ctx.globalCompositeOperation='lighter';ctx.strokeStyle='rgba(255,241,168,.75)';ctx.lineWidth=4;ctx.lineJoin='round';ctx.shadowColor='rgba(255,230,140,.9)';ctx.shadowBlur=16;ctx.beginPath();
+    for(let s=LC.run0;s<=Math.min(t,LC.run1)+1e-9;s+=1/120){const x=botX(s),y=botY(s);s===LC.run0?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.lineTo(bx,yb);ctx.stroke();ctx.restore();}
+  mirror(bx,BY0,A,yb<BY0+40?flb:0,cw);mirror(bx,BY1,A,yb>BY1-40?flb:0,cw);
+  // 삼각형 분석
+  const ta=io(t,17.9,22.55,.3,.35);
+  if(ta>0){const Ax=330,Ay=BY0,Cx=330,Cy=BY1,Bx=540,By=BY1;
+    ctx.save();ctx.globalAlpha=ta;ctx.fillStyle='rgba(255,200,61,.12)';ctx.beginPath();ctx.moveTo(Ax,Ay);ctx.lineTo(Cx,Cy);ctx.lineTo(Bx,By);ctx.closePath();ctx.fill();
+    const p1=E.out(seg(t,17.95,18.45)),p2=E.out(seg(t,18.35,18.85)),p3=E.out(seg(t,18.75,19.25));
+    ctx.setLineDash([10,9]);ctx.strokeStyle='#fff';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(Ax,Ay);ctx.lineTo(Ax,lerp(Ay,Cy,p1));ctx.stroke();ctx.setLineDash([]);
+    ctx.strokeStyle=SR;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(Cx,Cy);ctx.lineTo(lerp(Cx,Bx,p2),Cy);ctx.stroke();
+    ctx.strokeStyle=GOLD;ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(Ax,Ay);ctx.lineTo(lerp(Ax,Bx,p3),lerp(Ay,By,p3));ctx.stroke();
+    ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.strokeRect(Cx,Cy-22,22,22);ctx.restore();
+    ctx.save();ctx.shadowColor='rgba(0,0,0,1)';ctx.shadowBlur=14;
+    rich([['c·t',36,850,'#fff'],['₀',30,850,'#fff']],312,1130,ta*p1,'right');
+    txt('v·t',435,1308,36,850,SR,'center',ta*p2);
+    txt('c·t',462,1098,38,850,GOLD,'left',ta*p3);ctx.restore();}
+  glowDot(bx,yb,13,'rgba(255,241,168,A)',A,4);
+  // 아래 라벨
+  const la=A*(1-sm(t,17.7,18.0));
+  if(t>LC.run0-.3&&t<LC.run1+.1){const mp=E.out(seg(t,LC.run0-.2,LC.run0+.2));ctx.save();ctx.globalAlpha=la*mp;ctx.fillStyle='rgba(8,20,30,.85)';rr(bx-58,920,116,44,22);ctx.fill();ctx.restore();txt('→ 0.6c',bx,952,26,850,SR,'center',la*mp,0);}
+  txt('Moving clock',110,1338,38,800,INK,'left',la,-.02);txt('at 60% of light speed',110,1378,26,600,SR,'left',la,0);
+  const nb=countBefore(EV.botHits,t,LC.run0+1e-6);
+  txt(t<LC.run0?'–':String(nb),935,1372,72,850,t>=LC.run1?GOLD:INK,'right',la*E.out(seg(t,14.5,14.9)),-.03);
+  const sa=io(t,LC.run1,18.0,.2,.2);if(sa>0){ctx.save();ctx.globalAlpha=sa;ctx.fillStyle='rgba(30,24,6,.9)';rr(290,880,500,64,32);ctx.fill();ctx.strokeStyle='rgba(255,200,61,.6)';ctx.lineWidth=2;ctx.stroke();ctx.restore();txt('Same 3 seconds: 5 hits vs 4',540,923,30,800,GOLD,'center',sa,0);}
+  // 수식 판
+  const fa=io(t,18.3,22.55,.4,.35);
+  if(fa>0){ctx.save();ctx.globalAlpha=fa;ctx.fillStyle='rgba(12,16,28,.86)';rr(100,560,880,330,40);ctx.fill();ctx.strokeStyle='rgba(255,200,61,.3)';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
+    txt('By the Pythagorean theorem',540,612,28,650,SUB,'center',fa,0);}
+  caption(t,13.2,14.22,[['This is a ',46,700,INK],['light clock',48,850,SR]],'Each trip between the mirrors = one tick');
+  caption(t,14.6,17.52,[['Now the bottom clock ',46,700,INK],['moves fast',48,850,SR]],'60% of light speed — count the hits in 3 seconds');
+  caption(t,17.9,20.22,[['Its light travels ',46,700,INK],['a longer path',48,850,GOLD]],'Same light speed, longer path → slower ticks');
+  caption(t,20.6,22.75,[['Moving clock: 1 s = ',46,700,INK],['1.25 s at rest',48,850,SR]],"That's time dilation");
+}
+/* =========================================================
+   4. 속도와 시간 지연 그래프 (23–30초)
+   ========================================================= */
+const GX0=150,GX1=900,GYB=1300,GYT=620;
+const gx=b=>GX0+b*(GX1-GX0),gy=g=>GYB-(g-1)/7*(GYB-GYT);
+function dial(cx,cy,r,ang,col,a,flash){
+  ctx.save();ctx.globalAlpha=a;ctx.fillStyle='rgba(10,14,24,.92)';ctx.beginPath();ctx.arc(cx,cy,r,0,6.283);ctx.fill();
+  ctx.strokeStyle=col;ctx.lineWidth=4+4*flash;ctx.shadowColor=col;ctx.shadowBlur=8+22*flash;ctx.beginPath();ctx.arc(cx,cy,r,0,6.283);ctx.stroke();ctx.shadowBlur=0;
+  for(let i=0;i<8;i++){const q=i/8*6.283;ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx+Math.sin(q)*r*.78,cy-Math.cos(q)*r*.78);ctx.lineTo(cx+Math.sin(q)*r*.9,cy-Math.cos(q)*r*.9);ctx.stroke();}
+  ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.sin(ang)*r*.72,cy-Math.cos(ang)*r*.72);ctx.stroke();
+  ctx.fillStyle=col;ctx.beginPath();ctx.arc(cx,cy,6,0,6.283);ctx.fill();ctx.restore();
+}
+function tickAngle(arr,t){const n=countBefore(arr,t),lt=lastBefore(arr,t);return (n-1+E.back(cl((t-lt)/.12)))*6.283/8+(n===0?6.283/8:0);}
+function gammaScene(t){
+  if(t<22.9||t>30.3)return;const A=io(t,23.0,29.45,.4,.35);
+  head(t,23.05,29.63,[['Near light speed,',66,800,INK]],[['time almost ',66,800,INK],['stops',68,850,SR]]);
+  const ap=E.out(seg(t,23.0,23.6));
+  ctx.save();ctx.globalAlpha=A;ctx.strokeStyle='rgba(255,255,255,.45)';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(GX0,GYB);ctx.lineTo(lerp(GX0,GX1+20,ap),GYB);ctx.moveTo(GX0,GYB);ctx.lineTo(GX0,lerp(GYB,GYT-20,ap));ctx.stroke();
+  for(const g of [2,4,6,8]){ctx.strokeStyle='rgba(255,255,255,.07)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(GX0,gy(g));ctx.lineTo(GX1,gy(g));ctx.stroke();txt(g+'×',GX0-14,gy(g)+9,24,650,SUB,'right',ap,0);}
+  txt('1×',GX0-14,GYB+9,24,650,SUB,'right',ap,0);
+  for(const [b,s] of [[.5,'50%'],[1,'100%']])txt(s,gx(b),GYB+40,24,650,SUB,'center',ap,0);
+  txt('Speed (% of light speed) →',GX1,GYB+78,26,650,'#c7c7cc','right',ap,0);txt('↑ How many times slower',GX0,GYT-34,26,650,'#c7c7cc','left',ap,0);
+  ctx.setLineDash([8,10]);ctx.strokeStyle='rgba(255,241,168,.6)';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(GX1,GYB);ctx.lineTo(GX1,GYT-10);ctx.stroke();ctx.setLineDash([]);
+  txt('Light speed',GX1-10,GYB-16,24,750,LIGHT,'right',ap,0);
+  // 곡선
+  const bt=TL.beta(t);
+  if(t>23.6){ctx.shadowColor='rgba(90,200,250,.9)';ctx.shadowBlur=18;ctx.strokeStyle=SR;ctx.lineWidth=6;ctx.lineCap='round';ctx.beginPath();
+    for(let k=0;k<=240;k++){const b=bt*k/240;const x=gx(b),y=gy(TL.gamma(b));k?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();ctx.shadowBlur=0;
+    glowDot(gx(bt),gy(TL.gamma(bt)),14,'rgba(90,200,250,A)',1,3.5);}
+  ctx.restore();
+  // 이정표
+  [[24.6,.5,'50% → 1.15×',30,-50,'left'],[26.0,Math.sqrt(3)/2,'87% → 2×',-30,-40,'right'],[27.6,.99,'99% → 7.1×',-30,10,'right']].forEach(([t0,b,s,dx,dy,al])=>{
+    const p=A*E.out(seg(t,t0,t0+.35));if(p<=0)return;const x=gx(b)+dx,y=gy(TL.gamma(b))+dy,w=meas(s,30,850,0)+40,bx=al==='left'?x:x-w;
+    ctx.save();ctx.globalAlpha=p;ctx.fillStyle='rgba(8,20,30,.9)';rr(bx,y-38,w,54,27);ctx.fill();ctx.strokeStyle='rgba(90,200,250,.7)';ctx.lineWidth=2;ctx.stroke();ctx.restore();
+    txt(s,bx+w/2,y-1,30,850,INK,'center',p,0);});
+  // 두 시계
+  const ca=A*E.out(seg(t,23.3,23.8));
+  if(ca>0){const fE=Math.max(0,1-(t-lastBefore(EV.earthTicks,t))/.2),fS=Math.max(0,1-(t-lastBefore(EV.shipTicks,t))/.2);
+    dial(300,790,74,tickAngle(EV.earthTicks,t),GREEN,ca,fE);dial(530,790,74,tickAngle(EV.shipTicks,t),SR,ca,fS);
+    txt('Earth clock',300,900,28,750,INK,'center',ca,0);txt('Ship clock',530,900,28,750,SR,'center',ca,0);
+    txt('Running at '+Math.round(100/TL.gamma(Math.min(.995,bt)))+'%',530,936,26,700,'#c7c7cc','center',ca*E.out(seg(t,23.7,24)),0);}
+  caption(t,23.3,27.32,[['The faster you go, ',46,700,INK],['the steeper',48,850,SR]],'At 99% of c: about 7× slower, as seen from Earth');
+  caption(t,27.7,29.7,[['At everyday speeds, ',46,700,INK],["it's tiny",48,850,SR]],'Speed alone: 1 hour on a jet ≈ 1.5 billionths of a second');
+}
+/* =========================================================
+   5. 등가 원리 (30–35초)
+   ========================================================= */
+const BOXL={x:110,y:640,w:400,h:520},BOXR={x:570,y:640,w:400,h:520},FLOOR=1160,HAND=900,DROP=31.3,LAND=32.3;
+const ballY=t=>{if(t<DROP)return HAND;if(t<LAND){const s=(t-DROP)/(LAND-DROP);return HAND+(FLOOR-16-HAND)*s*s;}const b=t-LAND;return FLOOR-16-46*Math.max(0,Math.sin(Math.PI*b/.36))*Math.exp(-b*2)-(b>.36?14*Math.max(0,Math.sin(Math.PI*(b-.36)/.22)):0);};
+function eqScene(t){
+  if(t<29.9||t>35.3)return;const A=io(t,30.0,34.5,.45,.35);
+  head(t,30.05,34.63,[['Gravity and acceleration',64,800,INK]],[["can't be ",66,800,INK],['told apart',68,850,GR]]);
+  [[BOXL,'Room on Earth',false],[BOXR,'Rocket in space',true]].forEach(([B,lab,rocket],i)=>{
+    const p=E.out(seg(t,30.1+i*.2,30.6+i*.2)),a=A*p;if(a<=0)return;
+    ctx.save();ctx.globalAlpha=a;ctx.translate(0,(1-p)*40);
+    if(rocket){ctx.save();rr(B.x-10,560,B.w+20,860,30);ctx.clip();const sp=t>30.3?Math.pow(t-30.3,2)*120:0;
+      for(let k=0;k<26;k++){const sx=B.x+(k*97)%B.w,sy=560+((k*173+sp*(.6+(k%5)*.15))%860);ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx,sy-Math.min(40,6+sp*.02));ctx.stroke();}ctx.restore();
+      const fl=1+.2*Math.sin(t*37)+.1*Math.sin(t*59);ctx.fillStyle='#5a6880';ctx.beginPath();ctx.moveTo(B.x+140,FLOOR+20);ctx.lineTo(B.x+260,FLOOR+20);ctx.lineTo(B.x+290,FLOOR+70);ctx.lineTo(B.x+110,FLOOR+70);ctx.fill();
+      const g=ctx.createLinearGradient(0,FLOOR+70,0,FLOOR+70+150*fl);g.addColorStop(0,'rgba(255,240,180,.95)');g.addColorStop(.4,'rgba(255,150,50,.8)');g.addColorStop(1,'rgba(255,90,30,0)');ctx.fillStyle=g;
+      ctx.beginPath();ctx.moveTo(B.x+120,FLOOR+70);ctx.quadraticCurveTo(B.x+200,FLOOR+70+190*fl,B.x+280,FLOOR+70);ctx.fill();
+      ctx.strokeStyle=SR;ctx.lineWidth=5;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(B.x+B.w+26,FLOOR-40);ctx.lineTo(B.x+B.w+26,FLOOR-170);ctx.moveTo(B.x+B.w+12,FLOOR-150);ctx.lineTo(B.x+B.w+26,FLOOR-172);ctx.lineTo(B.x+B.w+40,FLOOR-150);ctx.stroke();}
+    else{const g=ctx.createLinearGradient(0,FLOOR+10,0,FLOOR+150);g.addColorStop(0,'#3d8a5c');g.addColorStop(1,'rgba(18,48,32,0)');ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(B.x-30,FLOOR+40);ctx.quadraticCurveTo(B.x+B.w/2,FLOOR-10,B.x+B.w+30,FLOOR+40);ctx.lineTo(B.x+B.w+30,FLOOR+160);ctx.lineTo(B.x-30,FLOOR+160);ctx.closePath();ctx.fill();
+      txt('Earth',B.x+B.w/2,FLOOR+92,28,750,'#9be3b6','center',1,0);
+      ctx.strokeStyle=GR;ctx.lineWidth=5;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(B.x-24,FLOOR-170);ctx.lineTo(B.x-24,FLOOR-40);ctx.moveTo(B.x-38,FLOOR-62);ctx.lineTo(B.x-24,FLOOR-40);ctx.lineTo(B.x-10,FLOOR-62);ctx.stroke();}
+    ctx.fillStyle='rgba(16,22,36,.92)';rr(B.x,B.y,B.w,B.h,26);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=3;ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,.2)';ctx.fillRect(B.x+10,FLOOR-6,B.w-20,6);
+    txt(lab,B.x+B.w/2,B.y+52,30,750,rocket?SR:GR,'center',1,0);
+    const holding=t<DROP,hand=[B.x+200,HAND-14];stick(B.x+110,FLOOR-6,230,'#dfe4ee',holding?hand:[B.x+170,HAND+40]);
+    const by=ballY(t);ctx.fillStyle=rocket?SR:GR;ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=16;ctx.beginPath();ctx.arc(B.x+212,by,16,0,6.283);ctx.fill();ctx.shadowBlur=0;
+    if(t>DROP&&t<LAND+.4){ctx.strokeStyle='rgba(255,255,255,.25)';ctx.setLineDash([4,8]);ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(B.x+212,HAND);ctx.lineTo(B.x+212,Math.min(by,FLOOR-16));ctx.stroke();ctx.setLineDash([]);}
+    const lp=seg(t,LAND,LAND+.5);if(lp>0&&lp<1){ctx.strokeStyle=`rgba(255,255,255,${(.7*(1-lp)).toFixed(3)})`;ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(B.x+212,FLOOR-2,20+60*lp,6+12*lp,0,0,6.283);ctx.stroke();}
+    txt(rocket?'Accelerating at 9.8 m/s²':'Gravity: 9.8 m/s²',B.x+B.w/2,B.y+92,24,650,'#c7c7cc','center',1,0);
+    ctx.restore();});
+  const eqp=E.back(seg(t,32.55,32.95));if(eqp>0){ctx.save();ctx.translate(540,900);ctx.scale(eqp,eqp);ctx.fillStyle='rgba(30,24,6,.95)';ctx.beginPath();ctx.arc(0,0,40,0,6.283);ctx.fill();ctx.strokeStyle=GOLD;ctx.lineWidth=3;ctx.stroke();txt('=',0,18,54,850,GOLD,'center',A,0);ctx.restore();}
+  caption(t,30.4,32.62,[['Room on Earth',46,850,GR],['  vs  ',40,600,SUB],['Rocket in space',46,850,SR]],'Drop a ball — what happens?');
+  caption(t,33.0,34.7,[['In a small room, ',46,700,INK],['no test can tell',48,850,GR]],'The equivalence principle — where General Relativity begins');
+}
+/* =========================================================
+   6–7. 휜 시공간과 중력 시간 지연 (35–49초)
+   ========================================================= */
+const SW=430,DEPTH=300,ELEV=.62,GCX=540,GCY=960,DCAM=1900;
+const WA=.22,WN=WA/Math.sqrt(1+WA*WA);
+const well=r=>r>=1?0:-(WA/Math.sqrt(r*r+WA*WA)-WN)/(1-WN);
+const wAt=t=>E.out(seg(t,36.0,37.0))*(1-.35*E.io(seg(t,43.0,44.0)))*(1-E.in(seg(t,48.7,49.2)));
+function P3(u,v,z){const X=u*SW,Y=v*SW,sy0=Y*Math.sin(ELEV)-z*Math.cos(ELEV),dep=Y*Math.cos(ELEV)+z*Math.sin(ELEV),k=DCAM/(DCAM-dep);return [GCX+X*k,GCY+sy0*k,dep,k];}
+const surfZ=(u,v,w)=>DEPTH*w*well(Math.hypot(u,v));
+const sunCol=t=>{const m=E.io(seg(t,43.0,43.7));return [Math.round(lerp(255,80,m)),Math.round(lerp(190,160,m)),Math.round(lerp(70,255,m))];};
+const SUNR=t=>lerp(58,44,E.io(seg(t,43.0,43.7)));
+function sunZ(t,w){const fall=lerp(900,0,E.in(seg(t,35.25,36.0)));return DEPTH*w*well(0)+SUNR(t)+fall;}
+function drawGrid(t,A,w){
+  const N=22,M=80;
+  for(let dir=0;dir<2;dir++)for(let i=0;i<=N;i++){const c=-1+2*i/N;let prev=null;
+    for(let j=0;j<=M;j++){const s=-1+2*j/M,u=dir?c:s,v=dir?s:c,z=surfZ(u,v,w),p=P3(u,v,z);
+      if(prev){const dz=-z/DEPTH;ctx.strokeStyle=`rgba(${Math.round(lerp(140,255,dz))},${Math.round(lerp(180,170,dz))},${Math.round(lerp(255,80,dz))},${(A*(.16+.5*dz)*lerp(.6,1,(p[3]-.8)/.5)).toFixed(3)})`;
+        ctx.lineWidth=1.3+1.4*dz;ctx.beginPath();ctx.moveTo(prev[0],prev[1]);ctx.lineTo(p[0],p[1]);ctx.stroke();}prev=p;}}
+}
+function drawSun(t,w,A){const z=sunZ(t,w),p=P3(0,0,z),r=SUNR(t)*p[3],c=sunCol(t);
+  ctx.save();ctx.globalAlpha=A;ctx.globalCompositeOperation='lighter';const g=ctx.createRadialGradient(p[0],p[1],r*.6,p[0],p[1],r*3.4);g.addColorStop(0,`rgba(${c[0]},${c[1]},${c[2]},.5)`);g.addColorStop(1,`rgba(${c[0]},${c[1]},${c[2]},0)`);ctx.fillStyle=g;ctx.beginPath();ctx.arc(p[0],p[1],r*3.4,0,6.283);ctx.fill();ctx.restore();
+  ctx.save();ctx.globalAlpha=A;const g2=ctx.createRadialGradient(p[0]-r*.3,p[1]-r*.35,r*.1,p[0],p[1],r);g2.addColorStop(0,'#fffbe8');g2.addColorStop(.5,`rgb(${c[0]},${c[1]},${c[2]})`);g2.addColorStop(1,`rgb(${Math.round(c[0]*.6)},${Math.round(c[1]*.55)},${Math.round(c[2]*.6)})`);ctx.fillStyle=g2;ctx.beginPath();ctx.arc(p[0],p[1],r,0,6.283);ctx.fill();ctx.restore();
+  return p;}
+const RO=.58,orbAng=t=>.6+6.283*(t-37)/3.4;
+function planetPos(t,w){const a=orbAng(t),u=RO*Math.cos(a),v=RO*Math.sin(a);return [u,v,P3(u,v,surfZ(u,v,w)+22)];}
+const RAYB=.42,RAYA=.42,rayV=u=>RAYB-RAYA*(u+Math.sqrt(u*u+RAYB*RAYB))/2+RAYA*RAYB/2*0;
+function curveScene(t){
+  if(t<34.9||t>49.4)return;const A=io(t,35.0,48.5,.4,.4),w=wAt(t);
+  head(t,35.05,42.63,[['What gravity really is:',66,800,INK]],[['curved spacetime',68,850,GR]]);
+  head(t,43.05,48.63,[['Closer to a heavy mass,',64,800,INK]],[['time runs ',64,800,INK],['slower',68,850,GR]]);
+  ctx.save();ctx.globalAlpha=1;drawGrid(t,A*E.out(seg(t,35.0,35.6)),w);ctx.restore();
+  // 행성 궤도
+  const oa=A*io(t,37.0,42.9,.5,.4);let behind=null,front=null;
+  if(oa>0){ctx.save();ctx.globalAlpha=oa*.7;ctx.setLineDash([6,10]);ctx.strokeStyle='rgba(143,210,255,.8)';ctx.lineWidth=2.5;ctx.beginPath();
+    for(let k=0;k<=120;k++){const a=k/120*6.283,u=RO*Math.cos(a),v=RO*Math.sin(a),p=P3(u,v,surfZ(u,v,w)+4);k?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);}ctx.stroke();ctx.setLineDash([]);ctx.restore();
+    const [u,v,p]=planetPos(t,w);(v<0?(behind=p):(front=p));}
+  const drawPlanet=p=>{ctx.save();ctx.globalAlpha=oa;const r=22*p[3],g=ctx.createRadialGradient(p[0]-r*.35,p[1]-r*.4,r*.1,p[0],p[1],r);g.addColorStop(0,'#c9ecff');g.addColorStop(1,'#2a6ad0');ctx.fillStyle=g;ctx.beginPath();ctx.arc(p[0],p[1],r,0,6.283);ctx.fill();ctx.restore();};
+  if(behind)drawPlanet(behind);
+  const sp=drawSun(t,w,A*E.out(seg(t,35.2,35.5)));
+  if(front)drawPlanet(front);
+  // 착지 충격파
+  const ip=seg(t,36.0,36.9);if(ip>0&&ip<1){ctx.save();ctx.globalAlpha=A*(1-ip);ctx.strokeStyle='rgba(255,200,100,.9)';ctx.lineWidth=3;ctx.beginPath();for(let k=0;k<=80;k++){const a=k/80*6.283,r=.1+.9*E.out(ip),p=P3(r*Math.cos(a),r*Math.sin(a),surfZ(r*Math.cos(a),r*Math.sin(a),w)+2);k?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);}ctx.stroke();ctx.restore();}
+  // 빛의 경로
+  const ra=A*io(t,39.7,42.9,.3,.4);
+  if(ra>0){const u1=lerp(-1.15,1.15,E.io(seg(t,39.8,42.0)));
+    ctx.save();ctx.globalAlpha=ra*.6;ctx.setLineDash([10,10]);ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=2.5;ctx.beginPath();
+    for(let k=0;k<=60;k++){const u=-1.15+2.3*k/60,p=P3(u,RAYB,surfZ(u,RAYB,w)+8);k?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);}ctx.stroke();ctx.setLineDash([]);ctx.restore();
+    ctx.save();ctx.globalAlpha=ra;ctx.globalCompositeOperation='lighter';ctx.strokeStyle='rgba(255,241,168,.9)';ctx.lineWidth=5;ctx.shadowColor='rgba(255,230,140,1)';ctx.shadowBlur=18;ctx.beginPath();let last;
+    for(let k=0;k<=90;k++){const u=-1.15+(u1+1.15)*k/90,v=rayV(u),p=P3(u,v,surfZ(u,v,w)+8);k?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);last=p;}ctx.stroke();ctx.restore();
+    if(u1<1.14)glowDot(last[0],last[1],12,'rgba(255,241,168,A)',ra,4);
+    const lp=P3(1.0,rayV(1.0),surfZ(1.0,rayV(1.0),w));const ta=ra*E.out(seg(t,41.6,42.0));
+    ctx.save();ctx.shadowColor='rgba(0,0,0,1)';ctx.shadowBlur=14;txt('Light bends too',lp[0]-10,lp[1]+52,32,800,LIGHT,'right',ta,0);
+    const sp2=P3(.72,RAYB,surfZ(.72,RAYB,w));txt('Straight path',sp2[0]-10,sp2[1]+64,26,650,'#c7c7cc','right',ta,0);ctx.restore();}
+  txt('The rubber sheet is a 2D picture of curved 4D spacetime',540,1436,25,550,'#8e8e93','center',A*io(t,37.4,42.8),0);
+  // 중력 시간 지연: 두 시계
+  const ga=A*io(t,43.6,48.5,.5,.4);
+  if(ga>0){const near=[-.2,.16],far=[.84,-.62];
+    [[far,EV.farTicks,SR,'Far away · faster'],[near,EV.nearTicks,GR,'Near the mass · slower']].forEach(([q,arr,col,lab],i)=>{
+      const p=P3(q[0],q[1],surfZ(q[0],q[1],w)),cx=p[0],cy=p[1]-150-(i?0:-10),pa=ga*E.out(seg(t,43.6+i*.3,44.1+i*.3));
+      ctx.save();ctx.globalAlpha=pa;ctx.strokeStyle=col;ctx.lineWidth=2;ctx.setLineDash([4,6]);ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(cx,cy+66);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=col;ctx.beginPath();ctx.arc(p[0],p[1],5,0,6.283);ctx.fill();ctx.restore();
+      const fl=Math.max(0,1-(t-lastBefore(arr,t))/.2);dial(cx,cy,62,tickAngle(arr,t),col,pa,fl);
+      ctx.save();ctx.shadowColor='rgba(0,0,0,1)';ctx.shadowBlur=12;txt(lab,cx,cy-82,28,800,col,'center',pa,0);ctx.restore();});
+    const ca2=ga*E.out(seg(t,47.9,48.2));if(ca2>0){const nf=countBefore(EV.farTicks,t),nn=countBefore(EV.nearTicks,t);txt(`${nf} ticks vs ${nn} ticks`,540,1402,30,800,GOLD,'center',ca2,0);}}
+  caption(t,35.4,36.92,[['Add a ',46,700,INK],['heavy star',48,850,GR],['…',46,700,INK]]);
+  caption(t,37.3,39.42,[['The planet just ',46,700,INK],['follows the curve',48,850,GR]],"It isn't pulled by a force — its path is curved");
+  caption(t,39.8,42.8,[['Even ',46,700,INK],['light',48,850,GR],[' follows the curve',46,700,INK]],'First confirmed during the 1919 solar eclipse');
+  caption(t,43.4,45.92,[['Clocks deeper in the well ',44,700,INK],['tick slower',46,850,GR]],'Exaggerated for clarity');
+  caption(t,46.3,48.75,[['Measured over just ',46,700,INK],['33 cm (1 ft)',48,850,GR]],'NIST atomic clocks, 2010 — the higher one ran faster');
+}
+/* =========================================================
+   8. GPS (49–56초)
+   ========================================================= */
+const EC=[540,750],RE=66,RO2=275;   // 지구 반지름 : 궤도 반지름 = 1 : 4.17 (실제 비율)
+const BARX=500,BSC=6,ROWS=[1160,1240,1320];
+function gpsScene(t){
+  if(t<48.9||t>56.3)return;const A=io(t,49.0,55.5,.45,.35);
+  head(t,49.05,55.45,[['GPS satellite clocks',66,800,INK]],[['feel ',66,800,INK],['both effects',68,850,GOLD]]);
+  ctx.save();ctx.globalAlpha=A;
+  // 궤도
+  const op=E.out(seg(t,49.1,49.8));ctx.strokeStyle='rgba(255,255,255,.22)';ctx.lineWidth=2;ctx.setLineDash([6,10]);ctx.beginPath();ctx.arc(EC[0],EC[1],RO2,-Math.PI/2,-Math.PI/2+6.283*op);ctx.stroke();ctx.setLineDash([]);
+  // 지구
+  let g=ctx.createRadialGradient(EC[0],EC[1],RE*.8,EC[0],EC[1],RE*1.6);g.addColorStop(0,'rgba(90,170,255,.35)');g.addColorStop(1,'rgba(90,170,255,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(EC[0],EC[1],RE*1.6,0,6.283);ctx.fill();
+  g=ctx.createRadialGradient(EC[0]-RE*.35,EC[1]-RE*.4,RE*.1,EC[0],EC[1],RE);g.addColorStop(0,'#9fdcff');g.addColorStop(.6,'#2f7de0');g.addColorStop(1,'#0e2f6b');ctx.fillStyle=g;ctx.beginPath();ctx.arc(EC[0],EC[1],RE,0,6.283);ctx.fill();
+  ctx.save();ctx.beginPath();ctx.arc(EC[0],EC[1],RE,0,6.283);ctx.clip();ctx.strokeStyle='rgba(255,255,255,.22)';ctx.lineWidth=1.5;for(let k=0;k<5;k++){const ph=((t*.25+k/5)%1)*Math.PI;ctx.beginPath();ctx.ellipse(EC[0],EC[1],Math.abs(RE*Math.cos(ph)),RE,0,0,6.283);ctx.stroke();}ctx.restore();
+  // 위성
+  const sa=-Math.PI/2+(t-49.2)*.34,sx=EC[0]+RO2*Math.cos(sa),sy=EC[1]+RO2*Math.sin(sa);
+  for(let k=0;k<3;k++){const q=((t-49.4)/1.2+k/3)%1;if(t<49.4)break;const px=lerp(sx,EC[0],q),py=lerp(sy,EC[1],q);ctx.strokeStyle=`rgba(255,241,168,${(.7*(1-q)).toFixed(3)})`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(px,py,10+8*q,sa+Math.PI-.6,sa+Math.PI+.6);ctx.stroke();}
+  ctx.save();ctx.translate(sx,sy);ctx.rotate(sa);ctx.fillStyle='#4d7bd6';ctx.fillRect(-10,-44,20,30);ctx.fillRect(-10,14,20,30);ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1;ctx.strokeRect(-10,-44,20,30);ctx.strokeRect(-10,14,20,30);
+  ctx.fillStyle='#e9eef6';ctx.fillRect(-13,-13,26,26);ctx.restore();
+  ctx.restore();
+  txt('Altitude ~20,200 km · speed ~3.9 km/s',540,1066,26,650,'#c7c7cc','center',A*E.out(seg(t,49.6,50)),0);
+  // 막대
+  txt('Daily drift vs. clocks on the ground',540,1112,26,650,SUB,'center',A*E.out(seg(t,49.8,50.2)),0);
+  const ax=A*E.out(seg(t,49.8,50.2));ctx.strokeStyle=`rgba(255,255,255,${(.4*ax).toFixed(3)})`;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(BARX,1124);ctx.lineTo(BARX,1350);ctx.stroke();
+  [[ROWS[0],-7.21,SR,'Moving fast (special)','−7.2 μs',50.0],[ROWS[1],45.72,GR,'High up (general)','+45.7 μs',51.0],[ROWS[2],38.50,GOLD,'Net','+38.5 μs',52.0]].forEach(([y,v,col,lab,val,t0])=>{
+    const p=E.out(seg(t,t0,t0+.6)),a=A*E.out(seg(t,t0,t0+.25));if(a<=0)return;const len=v*BSC*p;
+    ctx.save();ctx.globalAlpha=a;ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=14;rr(Math.min(BARX,BARX+len),y-17,Math.max(2,Math.abs(len)),34,10);ctx.fill();ctx.restore();
+    if(v<0){txt(val,BARX+len-14,y+11,30,850,col,'right',a,0);txt(lab,BARX+18,y+10,28,750,col,'left',a,0);}
+    else{txt(val,BARX+len+14,y+11,30,850,col,'left',a,0);txt(lab,BARX-18,y+10,28,750,col,'right',a,0);}});
+  const cp=E.back(seg(t,52.85,53.25));if(cp>0){ctx.save();ctx.globalAlpha=A;ctx.translate(540,1410);ctx.scale(cp,cp);ctx.fillStyle='rgba(30,24,6,.95)';rr(-330,-36,660,72,36);ctx.fill();ctx.strokeStyle=GOLD;ctx.lineWidth=2.5;ctx.stroke();
+    rich([['38.5 μs × speed of light ≈ ',30,700,INK],['11.5 km',36,850,GOLD]],0,12,A);ctx.restore();}
+  caption(t,49.4,52.62,[['Speed ',44,700,INK],['slows it',46,850,SR],[', altitude ',44,700,INK],['speeds it up',46,850,GR]],'Net: +38.5 μs a day (μs = a millionth of a second)');
+  caption(t,53.0,55.45,[["So they're ",46,700,INK],['set slow before launch',48,850,GOLD]],'Clock frequency: 10.23 → 10.22999999543 MHz');
+}
+/* =========================================================
+   9. 정리 (56–60초)
+   ========================================================= */
+function endScene(t){
+  if(t<55.9)return;
+  const h=E.out(seg(t,56.0,56.5));txt('Relativity in 60 seconds',540,330+(1-h)*20,40,750,SUB,'center',h,0);
+  const a1=E.out(seg(t,56.2,56.7)),a2=E.out(seg(t,56.8,57.3));
+  theoryCard(80,420,920,280,SR,iconLightClock,'Special Relativity','Motion slows clocks','as seen by an outside observer',a1,-(1-a1)*100,t);
+  theoryCard(80,740,920,280,GR,iconWell,'General Relativity','Mass slows clocks','the closer to it, the slower',a2,(1-a2)*100,t);
+  const b=E.out(seg(t,57.6,58.3));
+  if(b>0){ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=36;ctx.translate(540,1210+(1-b)*24);const sc=lerp(.92,1,E.back(b));ctx.scale(sc,sc);
+    const gg=ctx.createLinearGradient(-380,0,380,0);gg.addColorStop(0,SR);gg.addColorStop(.5,'#ffffff');gg.addColorStop(1,GR);
+    ctx.globalAlpha=b;ctx.font='850 92px Pretendard';ctx.letterSpacing='-3px';ctx.textAlign='center';ctx.fillStyle=gg;ctx.fillText('Time is relative',0,0);ctx.restore();}
+  txt('GPS really does correct for this — every day',540,1320,32,650,'#c7c7cc','center',E.out(seg(t,58.3,58.9)),-.01);
+}
+/* 정리 카드: 연도 대신 이론 이름을 작은 칩으로 */
+const _tc=theoryCard;
+
+/* ---------- 수식 ---------- */
+const K={
+  f1:el('$(c\\,t)^2=(c\\,t_0)^2+(v\\,t)^2$',{top:'640px',fontSize:'46px',color:'#f5f5f7'}),
+  f2:el('$t=\\dfrac{t_0}{\\sqrt{1-v^2/c^2}}$',{top:'706px',fontSize:'58px',color:'#ffd27a'}),
+  f3:el('$v=0.6c\\;\\Rightarrow\\;t=1.25\\,t_0$',{top:'830px',fontSize:'38px',color:'#9fdcff'}),
+};
+
+window.renderFrame=t=>{
+  ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+  domVis(K.f1,io(t,18.55,22.55,.4,.35),(1-E.out(seg(t,18.55,19)))*14);
+  domVis(K.f2,io(t,19.5,22.55,.4,.35),0,lerp(.9,1,E.back(seg(t,19.5,19.9))));
+  domVis(K.f3,io(t,20.6,22.55,.4,.35),(1-E.out(seg(t,20.6,21)))*14);
+  bg(t);hook(t);title(t);cScene(t);clockScene(t);gammaScene(t);eqScene(t);curveScene(t);gpsScene(t);endScene(t);
+  chip(t,8.0,29.6,'1 · Special Relativity',SR);
+  chip(t,30.0,48.55,'2 · General Relativity',GR);
+  chip(t,49.0,55.7,'3 · Both at work: GPS',GOLD);
+  progress(t);
+};
+window.ready=(async()=>{await Promise.all([550,600,650,700,750,800,850].map(w=>document.fonts.load(w+' 40px Pretendard','가A1%·₀→')));await document.fonts.ready;renderFrame(0);return true;})();
+</script>
+</body>
+</html>

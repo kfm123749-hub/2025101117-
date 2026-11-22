@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>찍어 갈 수 없는 것</title>
+<style>
+@font-face{font-family:"Pretendard";font-weight:45 920;font-style:normal;
+  src:url("node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2") format("woff2-variations");}
+*{margin:0;padding:0}html,body{background:#000;overflow:hidden}canvas{display:block;width:1080px;height:1920px}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* =========================================================
+   찍어 갈 수 없는 것 — 수험생을 위한 30초 (60fps)
+   점 5,519개 = 2027학년도 수능 지원자 551,864명 (점 하나 ≈ 100명)
+   ========================================================= */
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const W=1080,HH=1920,DUR=30;
+const cl=x=>Math.min(1,Math.max(0,x)),lerp=(a,b,s)=>a+(b-a)*s,seg=(t,a,b)=>cl((t-a)/(b-a));
+const sm=(x,a,b)=>{const p=cl((x-a)/(b-a));return p*p*(3-2*p)};
+const E={out:x=>1-Math.pow(1-x,3),in:x=>x*x*x,io:x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,
+  expo:x=>x>=1?1:1-Math.pow(2,-10*x),back:x=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}};
+const io=(t,a,b,din=.55,dout=.4)=>E.out(seg(t,a,a+din))*(1-E.in(seg(t,b,b+dout)));
+const INK='#f5f5f7',SUB='#a1a1a6',GOLD='#ffc83d',WARM='#ffd98a',RED='#ff5a4f',BLUE='#8fc4ff';
+function txt(s,x,y,size,weight,color,align='left',alpha=1,ls=-0.02){
+  if(alpha<=0.003)return 0;ctx.save();ctx.globalAlpha*=alpha;ctx.font=`${weight} ${size}px Pretendard`;ctx.letterSpacing=(ls*size)+'px';
+  ctx.textAlign=align;ctx.fillStyle=color;ctx.fillText(s,x,y);const w=ctx.measureText(s).width;ctx.restore();return w;}
+function meas(s,size,weight,ls=-0.02){ctx.save();ctx.font=`${weight} ${size}px Pretendard`;ctx.letterSpacing=(ls*size)+'px';const w=ctx.measureText(s).width;ctx.restore();return w;}
+function rich(parts,x,y,alpha=1,align='center'){const ws=parts.map(p=>meas(p[0],p[1],p[2]));let cx=align==='center'?x-ws.reduce((a,b)=>a+b,0)/2:x;
+  parts.forEach((p,i)=>{txt(p[0],cx,y,p[1],p[2],p[3],'left',alpha);cx+=ws[i];});}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);}
+
+const T={zoom:4.5,field:7.6,one:8.3,pct:10.0,ten:11.5,rules:13.1,ring:19.1,close:25.4};
+const NTOTAL=551864, FC=[540,1010];
+
+/* ---------- 점 5,519개: 원 안의 육각 격자 ---------- */
+let sd=20261119;const rnd=()=>(sd=(sd*16807)%2147483647)/2147483647;
+const D0=10.38;let G=[];
+for(let r=-50;r<=50;r++)for(let c=-50;c<=50;c++){const x=(c+(r&1)*.5)*D0,y=r*D0*.866;G.push([x,y,Math.hypot(x,y)]);}
+G.sort((a,b)=>a[2]-b[2]);G=G.slice(0,5519);
+const DOTS=G.map(([x,y,d])=>({x:FC[0]+x,y:FC[1]+y,d,ang:Math.atan2(y,x),r:[rnd(),rnd(),rnd(),rnd()]}));
+// 처음 보이는 붉은 점(P0)과, '1,000명 가정'용 붉은 점 9개
+let P0=0,best=1e9;DOTS.forEach((p,i)=>{const e=Math.hypot(p.x-585,p.y-960);if(e<best){best=e;P0=i;}});
+const REDS=[P0];while(REDS.length<10){const i=Math.floor(rnd()*DOTS.length);if(DOTS[i].d>60&&DOTS[i].d<380&&REDS.every(j=>Math.hypot(DOTS[i].x-DOTS[j].x,DOTS[i].y-DOTS[j].y)>90))REDS.push(i);}
+const isRed=new Uint8Array(DOTS.length);REDS.forEach((i,k)=>isRed[i]=k+1);
+// 원(내가 바꿀 수 있는 것)으로 모일 자리
+const RING=[540,1030];
+DOTS.forEach(p=>{p.ra=p.ang+(p.r[0]-.5)*.5;p.rr=300+(p.r[1]-.5)*52+(p.r[2]<.12?(p.r[3]-.5)*120:0);});
+
+/* ---------- 카메라: 붉은 점 하나에서 55만 명으로 ---------- */
+const zoomP=t=>E.io(seg(t,T.zoom,T.field));
+const scaleAt=t=>Math.exp(Math.log(42)*(1-zoomP(t)));
+function toScreen(x,y,t){const S=scaleAt(t),z=zoomP(t),cx=lerp(540,DOTS[P0].x,z),cy=lerp(880,DOTS[P0].y,z);return [cx+(x-DOTS[P0].x)*S,cy+(y-DOTS[P0].y)*S,S];}
+const ringP=(p,t)=>E.io(seg(t,T.ring+.9*p.d/405,T.ring+1.5+.9*p.d/405));
+function dotPos(i,t){
+  const p=DOTS[i];let x=p.x+1.2*Math.sin(t*.9+p.r[0]*6.28),y=p.y+1.2*Math.cos(t*.8+p.r[1]*6.28);
+  if(t>T.ring){
+    const q=ringP(p,t);
+    if(isRed[i]){const k=1+.75*q;x=FC[0]+(p.x-FC[0])*k;y=FC[1]+(p.y-FC[1])*k;}        // 붉은 점은 원 밖으로
+    else{const br=1+.035*Math.sin((t-T.ring)*1.25),a=p.ra+.06*(t-T.ring),R=p.rr*br*(t>T.close?lerp(1,.9,E.io(seg(t,T.close,T.close+1.4))):1);
+      const cy=RING[1]+(t>T.close?70*E.io(seg(t,T.close,T.close+1.4)):0);
+      x=lerp(x,RING[0]+R*Math.cos(a),q);y=lerp(y,cy+R*Math.sin(a),q);}
+  }
+  return [x,y];
+}
+
+/* ---------- 배경 ---------- */
+function bg(t){
+  ctx.fillStyle='#05060b';ctx.fillRect(0,0,W,HH);
+  const warm=sm(t,T.ring,T.ring+3),cold=1-sm(t,T.zoom,T.field);
+  let g=ctx.createRadialGradient(540,900,0,540,900,900);g.addColorStop(0,`rgba(255,60,50,${(.10*cold*(.7+.3*Math.sin(t*5.2))).toFixed(3)})`);g.addColorStop(.55,'rgba(255,60,50,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);
+  g=ctx.createRadialGradient(540,1030,0,540,1030,980);g.addColorStop(0,`rgba(255,190,90,${(.04+.13*warm).toFixed(3)})`);g.addColorStop(.6,'rgba(255,190,90,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);
+  g=ctx.createRadialGradient(150,140,0,150,140,950);g.addColorStop(0,'rgba(70,110,255,.13)');g.addColorStop(.6,'rgba(70,110,255,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);
+}
+/* ---------- 0. 불안: 붉은 점 하나와 떠도는 말들 ---------- */
+const NOISE=[['초소형 카메라',250,470,46],['AI 커닝',830,560,52],['감독관도 못 잡는다',300,1480,40],['품절',880,1330,48],['수능 D-3',190,1250,44],['불공정',860,1560,50],['나만 손해?',700,400,40],['소문',150,700,42]];
+function anxiety(t){
+  const a=1-sm(t,3.9,4.9);if(a<=0)return;
+  ctx.save();NOISE.forEach(([s,x,y,sz],i)=>{const fl=Math.max(0,Math.sin(t*(2.1+i*.37)+i*1.9))**2,ap=E.out(seg(t,.2+i*.18,.7+i*.18));
+    ctx.filter='none';txt(s,x+10*Math.sin(t*1.3+i),y+8*Math.cos(t*1.1+i*2),sz,750,'#ff9d94','center',a*ap*(.12+.42*fl));});ctx.restore();
+  const [x,y]=toScreen(DOTS[P0].x,DOTS[P0].y,t);
+  for(let k=0;k<3;k++){const p=((t*.75)+k/3)%1;ctx.strokeStyle=`rgba(255,90,79,${(a*.5*(1-p)).toFixed(3)})`;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(x,y,40+230*p,0,6.283);ctx.stroke();}
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=28;
+  const i1=E.out(seg(t,.15,.7)),i2=E.out(seg(t,1.5,2.1));
+  rich([['보이지 않는 카메라,',60,750,'#e2e2e8']],540,1150+(1-i1)*24,i1*a);
+  rich([['불안한 게 ',78,800,INK],['당연합니다',78,850,WARM]],540,1250+(1-i2)*24,i2*a);ctx.restore();
+}
+/* ---------- 점 그리기 ---------- */
+function dots(t){
+  const S=scaleAt(t),zooming=t<T.field+.05;
+  const others=t<T.zoom?0:sm(S,30,6);
+  const dimRules=1-.62*io(t,T.rules,T.ring-.3,.6,.5);
+  const warm=sm(t,T.ring,T.ring+2.4);
+  const tenA=sm(t,T.ten,T.ten+.5),sweepY=lerp(FC[1]-430,FC[1]+430,seg(t,T.rules+.3,T.rules+2.6));
+  ctx.globalCompositeOperation='lighter';
+  for(let i=0;i<DOTS.length;i++){
+    const p=DOTS[i];let [x,y]=dotPos(i,t),r=2.6;
+    if(zooming){[x,y]=toScreen(x,y,t);r=Math.min(26,2.6*S);if(x<-40||x>W+40||y<-40||y>HH+40)continue;}
+    const k=isRed[i];
+    if(k){
+      const on=k===1?1:tenA;                       // 첫 붉은 점은 처음부터, 나머지 9개는 '1,000명 가정'에서
+      if(on>0.01){
+        const out=t>T.ring?1-ringP(p,t):1,pulse=.75+.25*Math.sin(t*5.2+k);
+        const rad=k===1&&zooming?lerp(4.2,24,Math.pow((S-1)/41,.7)):4.2;
+        const g=ctx.createRadialGradient(x,y,0,x,y,rad*5);g.addColorStop(0,`rgba(255,80,70,${(.55*on*out*pulse).toFixed(3)})`);g.addColorStop(1,'rgba(255,80,70,0)');ctx.fillStyle=g;ctx.fillRect(x-rad*5,y-rad*5,rad*10,rad*10);
+        ctx.fillStyle=`rgba(255,${Math.round(96+60*pulse)},${Math.round(84+50*pulse)},${(on*out).toFixed(3)})`;ctx.beginPath();ctx.arc(x,y,rad,0,6.283);ctx.fill();
+        if(k===1&&S>6){ctx.strokeStyle=`rgba(20,4,4,${(.8*sm(S,6,20)).toFixed(3)})`;ctx.lineWidth=rad*.16;ctx.beginPath();ctx.arc(x,y,rad*.55,0,6.283);ctx.stroke();}
+        continue;
+      }
+    }
+    const tw=.62+.38*Math.sin(t*(1.2+p.r[2]*1.6)+p.r[3]*6.28);
+    let al=.78*others*tw*dimRules;
+    const band=Math.exp(-Math.pow((y-sweepY)/26,2))*io(t,T.rules+.3,T.rules+2.6,.2,.2);     // 훑고 지나가는 빛
+    const q=t>T.ring?ringP(p,t):0;
+    const c=[lerp(168,255,warm*q),lerp(190,214,warm*q),lerp(226,140,warm*q)];
+    al=Math.min(1,al+band*.8+q*.25);
+    if(al<.01)continue;
+    ctx.fillStyle=`rgba(${Math.round(lerp(c[0],255,band))},${Math.round(lerp(c[1],255,band))},${Math.round(lerp(c[2],255,band))},${al.toFixed(3)})`;
+    ctx.beginPath();ctx.arc(x,y,r*(1+.5*band+.25*q),0,6.283);ctx.fill();
+  }
+  ctx.globalCompositeOperation='source-over';
+}
+/* ---------- 1. 숫자의 관점 ---------- */
+function numbers(t){
+  const a=io(t,T.zoom+.7,T.rules-.35);if(a<=0)return;
+  {const sa=a*(1-sm(t,T.field-.5,T.field+.4));if(sa>0){const g=ctx.createLinearGradient(0,150,0,560);g.addColorStop(0,`rgba(5,6,11,${(.92*sa).toFixed(3)})`);g.addColorStop(.7,`rgba(5,6,11,${(.8*sa).toFixed(3)})`);g.addColorStop(1,'rgba(5,6,11,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,560);}}
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=24;
+  txt('2027학년도 수능 지원자',80,262,36,650,SUB,'left',a,-.01);
+  const n=Math.round(NTOTAL*E.expo(seg(t,T.zoom+.8,T.field)));
+  const w=txt(n.toLocaleString('en-US'),80,378,112,850,INK,'left',a,-.04);txt('명',80+w+10,378,60,750,SUB,'left',a);
+  const la=a*E.out(seg(t,T.field+.1,T.field+.6));
+  ctx.fillStyle=`rgba(168,190,226,${la})`;ctx.beginPath();ctx.arc(92,438,7,0,6.283);ctx.fill();txt('점 하나 ≈ 100명',112,449,30,650,'#c7c7cc','left',la,0);
+  ctx.restore();
+  // 붉은 점 표시
+  const ca=a*E.out(seg(t,T.one,T.one+.5));
+  if(ca>0){const p=DOTS[P0],pu=(t*1.3)%1;ctx.strokeStyle=`rgba(255,110,100,${(ca*(1-pu)).toFixed(3)})`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(p.x,p.y,12+40*pu,0,6.283);ctx.stroke();
+    ctx.strokeStyle=`rgba(255,150,140,${(ca*.9).toFixed(3)})`;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.x+12,p.y-12);ctx.lineTo(p.x+92,p.y-150);ctx.lineTo(p.x+120,p.y-150);ctx.stroke();
+    ctx.save();ctx.globalAlpha=ca;ctx.fillStyle='rgba(24,8,8,.88)';rr(p.x+120,p.y-182,238,64,32);ctx.fill();ctx.strokeStyle='rgba(255,138,128,.7)';ctx.lineWidth=2;ctx.stroke();ctx.restore();
+    txt(t<T.ten+.2?'100명 (가정)':'1,000명 (가정)',p.x+239,p.y-139,32,800,'#ffb3ab','center',ca,0);}
+  if(t>T.ten){REDS.slice(1).forEach((i,k)=>{const p=DOTS[i],q=seg(t,T.ten+k*.07,T.ten+.7+k*.07);if(q>0&&q<1){ctx.strokeStyle=`rgba(255,110,100,${(a*(1-q)).toFixed(3)})`;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(p.x,p.y,8+44*E.out(q),0,6.283);ctx.stroke();}});}
+}
+/* ---------- 2. 규칙 ---------- */
+const RULES=[['전자기기는 반입부터 금지','휴대전화 · 스마트워치 · 스마트안경 · 무선 이어폰'],['적발되면 그해 시험 무효','다음 해 응시 자격도 박탈'],['고의적인 부정행위는 형사 고발','교육부 방침']];
+function rules(t){
+  const a=io(t,T.rules,T.ring-.35);if(a<=0)return;
+  RULES.forEach(([m,s],i)=>{
+    const tin=T.rules+.55+i*1.1,p=E.out(seg(t,tin,tin+.55));if(p<=0)return;const y=760+i*176+(1-p)*40,pop=1+.04*Math.sin(Math.PI*seg(t,tin,tin+.4));
+    ctx.save();ctx.globalAlpha=a*p;ctx.translate(540,y+70);ctx.scale(pop,pop);ctx.translate(-540,-y-70);
+    ctx.fillStyle='rgba(12,16,28,.86)';rr(90,y,900,146,40);ctx.fill();ctx.strokeStyle='rgba(143,196,255,.35)';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle=BLUE;ctx.beginPath();ctx.arc(152,y+73,30,0,6.283);ctx.fill();
+    ctx.strokeStyle='#05060b';ctx.lineWidth=6;ctx.lineCap='round';ctx.lineJoin='round';const ck=E.out(seg(t,tin+.25,tin+.6));
+    ctx.beginPath();ctx.moveTo(138,y+74);ctx.lineTo(lerp(138,148,cl(ck*2)),lerp(y+74,y+85,cl(ck*2)));if(ck>.5)ctx.lineTo(lerp(148,168,cl(ck*2-1)),lerp(y+85,y+61,cl(ck*2-1)));ctx.stroke();
+    txt(m,210,y+66,46,800,INK,'left',1,-.03);txt(s,210,y+112,29,600,'#aeb6c8','left',1,-.01);ctx.restore();});
+}
+/* ---------- 3. 내가 바꿀 수 있는 것 ---------- */
+const OUTW=[['뉴스',170,640],['소문',900,650],['남의 행동',190,1420],['커뮤니티',880,1420]];
+function control(t){
+  const a=io(t,T.ring+.9,T.close-.25);
+  OUTW.forEach(([s,x,y],i)=>{const ap=a*E.out(seg(t,T.ring+1.2+i*.15,T.ring+1.7+i*.15)),dr=seg(t,T.ring+1.2,T.close),dx=(x-540)*.1*dr,dy=(y-1030)*.1*dr;
+    const w=txt(s,x+dx,y+dy,42,750,'#b4b9c6','center',ap*(.95-.45*dr));
+    if(ap>0){ctx.strokeStyle=`rgba(138,143,156,${(ap*.8*(1-.4*dr)).toFixed(3)})`;ctx.lineWidth=3;const sw=w*E.out(seg(t,T.ring+1.9+i*.15,T.ring+2.4+i*.15));ctx.beginPath();ctx.moveTo(x+dx-w/2-6,y+dy-13);ctx.lineTo(x+dx-w/2-6+sw+12,y+dy-13);ctx.stroke();}});
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=22;
+  [['내 호흡',-84],['내 속도',0],['내 답안지',84]].forEach(([s,dy],i)=>{const tin=T.ring+2.1+i*.55,p=E.out(seg(t,tin,tin+.55));
+    txt(s,540,1052+dy+(1-p)*18,i===2?70:62,i===2?850:800,i===2?GOLD:INK,'center',a*p,-.03);});
+  ctx.restore();
+}
+/* ---------- 4. 마무리 ---------- */
+function closing(t){
+  if(t<T.close)return;
+  const L=(parts,y,tin)=>{const p=E.out(seg(t,tin,tin+.65));if(p<=0)return;ctx.save();ctx.shadowColor='rgba(0,0,0,.92)';ctx.shadowBlur=30;rich(parts,540,y+(1-p)*24,p);ctx.restore();};
+  L([['카메라가 ',62,750,'#d8d8de'],['문제',62,800,'#ff9d94'],['는 찍어도',62,750,'#d8d8de']],370,T.close+.3);
+  L([['당신이 쌓아 온 시간',80,850,GOLD],['은',62,750,INK]],480,T.close+1.0);
+  L([['찍어 갈 수 없습니다',70,800,INK]],580,T.close+1.5);
+  const p=E.out(seg(t,T.close+2.3,T.close+3.0));
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=22;
+  txt('끝까지',540,1090+(1-p)*16,60,750,INK,'center',p,-.03);txt('응원합니다',540,1168+(1-p)*16,72,850,WARM,'center',p,-.03);
+  txt('2027학년도 수능 수험생 여러분께',540,1650,32,600,'#b9bcc6','center',E.out(seg(t,T.close+3.0,T.close+3.6)),-.01);ctx.restore();
+  for(let k=0;k<3;k++){const q=((t-T.close)/4.5+k/3)%1,al=.15*(1-q)*seg(t,T.close+1.2,T.close+2.2);ctx.strokeStyle=`rgba(255,214,140,${al.toFixed(3)})`;ctx.lineWidth=2;ctx.beginPath();ctx.arc(540,1100,300+280*q,0,6.283);ctx.stroke();}
+}
+/* ---------- 공통 ---------- */
+function head(t,tin,tout,l1,l2){const a=io(t,tin,tout);if(a<=0)return;const d=(1-E.out(seg(t,tin,tin+.6)))*30;
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=24;rich(l1,80,330+d,a,'left');if(l2)rich(l2,80,414+d,a,'left');ctx.restore();}
+function caption(t,tin,tout,parts,sub,y=1570){const a=io(t,tin,tout,.5,.35);if(a<=0)return;const d=(1-E.out(seg(t,tin,tin+.5)))*22;
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.95)';ctx.shadowBlur=26;rich(parts,540,y+d,a);if(sub)txt(sub,540,y+60+d,30,550,'#c7c7cc','center',a,-.01);ctx.restore();}
+function progress(t){ctx.fillStyle='rgba(255,255,255,.08)';rr(80,136,920,6,3);ctx.fill();
+  const g=ctx.createLinearGradient(80,0,1000,0);g.addColorStop(0,RED);g.addColorStop(.4,BLUE);g.addColorStop(1,GOLD);ctx.fillStyle=g;rr(80,136,920*t/DUR,6,3);ctx.fill();}
+
+window.renderFrame=t=>{
+  ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+  bg(t);dots(t);
+  if(t<5)anxiety(t);
+  numbers(t);rules(t);control(t);closing(t);
+  head(t,T.rules+.1,T.ring-.35,[['시험의 ',66,800,INK],['규칙',66,850,BLUE],['은 분명합니다',66,800,INK]]);
+  head(t,T.ring+.5,T.close-.3,[['힘은 ',66,800,INK],['내가 바꿀 수 있는 것',66,850,GOLD],['에만',66,800,INK]],[['씁니다',66,800,INK]]);
+  caption(t,T.one+.1,T.pct-.25,[['이 중 ',46,700,INK],['100명',48,850,'#ff9d94'],['이 부정행위를 한다고 가정해도',46,700,INK]]);
+  caption(t,T.pct,T.ten-.2,[['전체의 ',50,700,INK],[(0.018*E.expo(seg(t,T.pct,T.pct+.8))).toFixed(3)+'%',92,850,GOLD]],'내 석차가 밀리는 폭도 최대 그만큼입니다',1575);
+  caption(t,T.ten+.15,T.rules-.35,[['1,000명',48,850,'#ff9d94'],['이라 가정해도 ',46,700,INK],['0.18%',76,850,GOLD]],'55만 명 속에서는 점 열 개입니다',1575);
+  txt('지원자 수: 한국교육과정평가원 2026.9.8 발표 · 붉은 점은 실제 통계가 아닌 가정',540,1716,23,550,'#7c7f8a','center',io(t,T.one+.2,T.rules-.35),0);
+  caption(t,T.rules+3.9,T.ring-.35,[['막는 일은 ',46,700,INK],['시험 당국의 몫',48,850,BLUE],['입니다',46,700,INK]],'정부 긴급 대응팀 구성 · 추가 대책 예고');
+  txt('교육부 안내(2026.11.9) · 2026.11.16 보도 기준',540,1716,23,550,'#7c7f8a','center',io(t,T.rules+.6,T.ring-.35),0);
+  caption(t,T.ring+3.4,T.close-.3,[['의심은 감독관에게, ',46,700,INK],['집중은 나에게',48,850,GOLD]]);
+  progress(t);
+};
+window.ready=(async()=>{await Promise.all([550,600,650,700,750,800,850].map(w=>document.fonts.load(w+' 40px Pretendard','가A1%≈')));await document.fonts.ready;renderFrame(0);return true;})();
+</script>
+</body>
+</html>

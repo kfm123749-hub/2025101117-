@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>AI 벤치마크 60초</title>
+<style>
+@font-face{font-family:"Pretendard";font-weight:45 920;font-style:normal;
+  src:url("node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2") format("woff2-variations");}
+*{margin:0;padding:0}html,body{background:#000;overflow:hidden}canvas{display:block;width:1080px;height:1920px}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const W=1080,HH=1920,DUR=60;
+const cl=x=>Math.min(1,Math.max(0,x)),lerp=(a,b,s)=>a+(b-a)*s,seg=(t,a,b)=>cl((t-a)/(b-a));
+const E={out:x=>1-Math.pow(1-x,3),in:x=>x*x*x,io:x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,
+  back:x=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}};
+const INK='#f5f5f7',SUB='#a1a1a6',OR='#ff9f0a',BLUE='#5ac8fa',GR='#30d158',RED='#ff453a',VIO='#bf8cff';
+const hex=c=>[1,3,5].map(i=>parseInt(c.slice(i,i+2),16));
+const rgba=(c,a)=>{const v=hex(c);return `rgba(${v[0]},${v[1]},${v[2]},${Math.max(0,a).toFixed(4)})`};
+function txt(s,x,y,size,weight,color,align='left',alpha=1,ls=-0.02){
+  if(alpha<=0.003)return 0;ctx.save();ctx.globalAlpha*=alpha;ctx.font=`${weight} ${size}px Pretendard`;ctx.letterSpacing=(ls*size)+'px';
+  ctx.textAlign=align;ctx.fillStyle=color;ctx.fillText(s,x,y);const w=ctx.measureText(s).width;ctx.restore();return w;}
+function meas(s,size,weight,ls=-0.02){ctx.save();ctx.font=`${weight} ${size}px Pretendard`;ctx.letterSpacing=(ls*size)+'px';const w=ctx.measureText(s).width;ctx.restore();return w;}
+function rich(parts,cx,y,alpha=1,align='center'){
+  const ws=parts.map(p=>meas(p[0],p[1],p[2]));let x=align==='center'?cx-ws.reduce((a,b)=>a+b,0)/2:cx;
+  parts.forEach((p,i)=>{txt(p[0],x,y,p[1],p[2],p[3],'left',alpha);x+=ws[i];});}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);}
+/* 등장·퇴장 투명도와 이동량 */
+const io=(t,a,b,din=.6,dout=.4)=>E.out(seg(t,a,a+din))*(1-E.in(seg(t,b,b+dout)));
+const dy=(t,a,d=34)=>(1-E.out(seg(t,a,a+.6)))*d;
+
+const S={s1:4.5,s2:14,s3:27,s4:41,s5:52};
+const CX=80,CY=500,CW=920,CH=900;                       // 그래프 카드
+
+function bg(t){
+  ctx.fillStyle='#07080c';ctx.fillRect(0,0,W,HH);
+  const a=t/DUR*6.283;
+  const blob=(x,y,c)=>{const g=ctx.createRadialGradient(x,y,0,x,y,850);g.addColorStop(0,rgba(c,.17));g.addColorStop(.62,rgba(c,0));ctx.fillStyle=g;ctx.fillRect(0,0,W,HH);};
+  blob(200+260*Math.sin(a*1.3),150+300*Math.cos(a),BLUE);blob(1000+240*Math.cos(a*1.1),1750+280*Math.sin(a*.9),VIO);
+  ctx.fillStyle='rgba(255,255,255,.08)';rr(80,136,920,6,3);ctx.fill();
+  const g=ctx.createLinearGradient(80,0,1000,0);g.addColorStop(0,BLUE);g.addColorStop(.5,VIO);g.addColorStop(1,OR);
+  ctx.fillStyle=g;rr(80,136,920*t/DUR,6,3);ctx.fill();
+}
+function head(t,tin,tout,chip,col,l1,l2){
+  const a=io(t,tin,tout);if(a<=0)return;const d=dy(t,tin);
+  ctx.save();ctx.globalAlpha=a;const w=meas(chip,30,700,0)+56;
+  ctx.fillStyle='rgba(255,255,255,.08)';rr(80,196+d*.4,w,62,31);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.14)';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
+  txt(chip,108,238+d*.4,30,700,col,'left',a,0);
+  rich(l1,80,356+d,a,'left');if(l2)rich(l2,80,440+d,a,'left');
+}
+function card(t,tin,tout,title,src){
+  const a=io(t,tin,tout);if(a<=0)return 0;const d=dy(t,tin,50);
+  ctx.save();ctx.globalAlpha=a;ctx.translate(0,d);
+  const g=ctx.createLinearGradient(0,CY,0,CY+CH);g.addColorStop(0,'rgba(255,255,255,.055)');g.addColorStop(1,'rgba(255,255,255,.02)');
+  ctx.fillStyle=g;rr(CX,CY,CW,CH,48);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.1)';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
+  if(title)txt(title,CX+44,CY+72+d,31,650,SUB,'left',a,-.01);
+  if(src)txt(src,CX+44,CY+CH-34+d,23,550,'#7c7c82','left',a,0);
+  return a;
+}
+function caption(t,tin,tout,parts,sub){
+  const a=io(t,tin,tout);if(a<=0)return;const d=dy(t,tin,24);
+  rich(parts,540,1512+d,a);if(sub)txt(sub,540,1574+d,32,550,SUB,'center',a,-.01);
+}
+
+/* ---------- 0. 훅 ---------- */
+function hook(t){
+  const out=E.in(seg(t,3.85,4.35));if(out>=1)return;
+  const L=(parts,y,tin,sc)=>{const i=E.out(seg(t,tin,tin+.55)),a=i*(1-out);if(a<=0)return;ctx.save();ctx.translate(0,(1-i)*44-out*30);rich(parts,540,y,a);ctx.restore();};
+  L([['수학 올림피아드 ',70,750,INK],['금메달',70,800,OR],['을 따는 AI가',70,750,INK]],690,.25);
+  const p=seg(t,1.2,2.2);
+  L([[(50.1*E.out(p)).toFixed(1)+'%',250,850,BLUE]],960,1.15);
+  L([['시계는 절반밖에 못 읽습니다',70,750,INK]],1110,2.05);
+  L([['AI 점수, 어떻게 읽어야 할까요?',46,650,SUB]],1230,2.9);
+}
+/* ---------- 1. 벤치마크란 ---------- */
+let sd=11;const rnd=()=>(sd=(sd*16807)%2147483647)/2147483647;
+const order=[...Array(100).keys()],okSet=new Set();
+{const idx=[...Array(100).keys()];for(let i=99;i>0;i--){const j=Math.floor(rnd()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}idx.slice(0,66).forEach(i=>okSet.add(i));}
+function g1(t){
+  const a=card(t,S.s1,S.s2-.5,'문제 100개짜리 시험지',null);if(a<=0)return;const d=dy(t,S.s1,50);
+  const x0=CX+190,y0=CY+136+d,sp=60,prog=seg(t,5.7,9.8)*106;
+  for(let i=0;i<100;i++){
+    const x=x0+(i%10)*sp,y=y0+Math.floor(i/10)*sp,p=E.back(cl((prog-i)/6));
+    ctx.fillStyle='rgba(255,255,255,.1)';ctx.globalAlpha=a;ctx.beginPath();ctx.arc(x,y,18,0,6.283);ctx.fill();
+    if(p>0){ctx.fillStyle=okSet.has(i)?GR:rgba(RED,.75);ctx.beginPath();ctx.arc(x,y,18*p,0,6.283);ctx.fill();}
+  }
+  ctx.globalAlpha=1;
+  const bp=E.io(seg(t,10,11.6)),by=CY+CH-112+d;
+  const ba=a*E.out(seg(t,9.8,10.3));
+  txt('정답률',CX+60,by+14,34,650,SUB,'left',ba);
+  ctx.globalAlpha=ba;ctx.fillStyle='rgba(255,255,255,.08)';rr(CX+190,by-22,500,44,22);ctx.fill();
+  ctx.fillStyle=GR;rr(CX+190,by-22,Math.max(44,500*.66*bp),44,22);ctx.fill();ctx.globalAlpha=1;
+  txt(Math.round(66*bp)+'%',CX+860,by+22,76,850,GR,'right',ba,-.04);
+}
+/* ---------- 2. OSWorld 막대 ---------- */
+function g2(t){
+  const a=card(t,S.s2,S.s3-.5,'OSWorld · 컴퓨터를 직접 조작하는 과제 성공률','자료: Stanford AI Index 2026 (검색 요약 기준)');if(a<=0)return;const d=dy(t,S.s2,50);
+  const x0=CX+130,x1=CX+CW-60,yb=CY+CH-150+d,yt=CY+150+d,Y=v=>yb-(yb-yt)*v/100;
+  for(const v of [0,25,50,75,100]){
+    ctx.strokeStyle=`rgba(255,255,255,${(v?.08:.35)*a})`;ctx.lineWidth=v?1.5:2.5;ctx.beginPath();ctx.moveTo(x0,Y(v));ctx.lineTo(x1,Y(v));ctx.stroke();
+    txt(v+'%',x0-18,Y(v)+10,28,600,SUB,'right',a,0);
+  }
+  const bar=(cx,v,col,lab,val,tin,inside)=>{const p=E.io(seg(t,tin,tin+1.5)),w=190,h=(yb-Y(v))*p;
+    ctx.globalAlpha=a;const g=ctx.createLinearGradient(0,yb-h,0,yb);g.addColorStop(0,col);g.addColorStop(1,rgba(col,.35));
+    ctx.fillStyle=g;if(h>1){rr(cx-w/2,yb-h,w,h,[18,18,0,0]);ctx.fill();}ctx.globalAlpha=1;
+    txt(lab,cx,yb+52,36,700,INK,'center',a*E.out(seg(t,tin-.3,tin+.2)));
+    txt(val(p),cx,inside?yb-h+Math.min(74,h):yb-h-22,inside?54:58,850,inside?'#07080c':col,'center',a*E.out(seg(t,tin+(inside?.5:0),tin+(inside?.9:.4))),-.03);};
+  bar(x0+210,12,'#8e9bb3','2024년',p=>'약 '+Math.round(12*p)+'%',15.2);
+  bar(x0+520,66.3,BLUE,'2025년',p=>(66.3*p).toFixed(1)+'%',16.9,true);
+  const hp=E.io(seg(t,19.6,20.6)),hy=Y(72.35);
+  if(hp>0){ctx.strokeStyle=rgba(OR,a);ctx.lineWidth=4;ctx.setLineDash([16,12]);ctx.beginPath();ctx.moveTo(x0,hy);ctx.lineTo(lerp(x0,x1,hp),hy);ctx.stroke();ctx.setLineDash([]);
+    txt('사람 72.35%',x0+12,hy-18,36,750,OR,'left',a*E.out(seg(t,20.2,20.7)));}
+  const ap=E.out(seg(t,18.5,19.1));
+  if(ap>0){ctx.save();ctx.globalAlpha=a*ap;ctx.fillStyle=rgba(BLUE,.14);rr(x0+60,Y(47)-34,300,68,34);ctx.fill();ctx.restore();
+    txt('1년 만에 5배 이상',x0+210,Y(47)+12,34,750,BLUE,'center',a*ap);}
+}
+/* ---------- 3. METR 로그 그래프 ---------- */
+const PTS=[[2019.12,2,'GPT-2','약 2초',-1],[2023.2,300,'GPT-4','약 5분',-1],[2025.6,137*60,'GPT-5','2시간 17분',-1],[2026.1,12*3600,'Claude Opus 4.6','약 12시간',-1]];
+function g3(t){
+  const a=card(t,S.s3,S.s4-.5,'METR · AI가 50% 확률로 해내는 작업의 길이','자료: METR 시간 지평 (2019·2023년 값은 근사, 검색 요약 기준)');if(a<=0)return;const d=dy(t,S.s3,50);
+  const x0=CX+150,x1=CX+CW-70,yb=CY+CH-150+d,yt=CY+170+d;
+  const X=y=>lerp(x0,x1,(y-2019)/7.6),Y=s=>lerp(yb,yt,(Math.log10(s)+1)/(Math.log10(86400*1.6)+1));
+  for(const [s,l] of [[1,'1초'],[60,'1분'],[3600,'1시간'],[86400,'1일']]){
+    ctx.strokeStyle=`rgba(255,255,255,${.09*a})`;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x0,Y(s));ctx.lineTo(x1,Y(s));ctx.stroke();
+    txt(l,x0-18,Y(s)+10,28,600,SUB,'right',a,0);}
+  ctx.strokeStyle=`rgba(255,255,255,${.35*a})`;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(x0,yb);ctx.lineTo(x1,yb);ctx.stroke();
+  for(const y of [2019,2021,2023,2025])txt(String(y),X(y),yb+46,28,600,SUB,'center',a,0);
+  txt('(세로축: 로그 눈금)',x1,yt-34,24,550,'#7c7c82','right',a,0);
+  // 추세선: 7개월마다 2배
+  const tr=y=>2*Math.pow(2,(y-2019.12)*12/7),lp=E.io(seg(t,29.4,32.6)),ye=lerp(2019.12,2026.5,lp);
+  if(lp>0){ctx.strokeStyle=rgba(VIO,.9*a);ctx.lineWidth=5;ctx.setLineDash([4,12]);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(X(2019.12),Y(2));ctx.lineTo(X(ye),Y(tr(ye)));ctx.stroke();ctx.setLineDash([]);ctx.lineCap='butt';}
+  const la=a*E.out(seg(t,32.4,33));
+  if(la>0){ctx.save();ctx.globalAlpha=la;ctx.fillStyle=rgba(VIO,.16);rr(X(2024.75)-186,Y(9)-40,372,76,38);ctx.fill();ctx.restore();
+    txt('약 7개월마다 2배',X(2024.75),Y(9)+12,38,800,VIO,'center',la);}
+  PTS.forEach((p,i)=>{
+    const tin=[28.4,29.9,31.4,32.6][i],pp=seg(t,tin,tin+.55),sc=pp<=0?0:E.back(pp),x=X(p[0]),y=Y(p[1]);
+    if(sc<=0)return;
+    const rp=seg(t,tin,tin+.9);if(rp<1){ctx.strokeStyle=rgba(OR,(1-rp)*a);ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,12+46*E.out(rp),0,6.283);ctx.stroke();}
+    ctx.globalAlpha=a;ctx.fillStyle='#07080c';ctx.beginPath();ctx.arc(x,y,17*sc,0,6.283);ctx.fill();ctx.fillStyle=OR;ctx.beginPath();ctx.arc(x,y,12*sc,0,6.283);ctx.fill();ctx.globalAlpha=1;
+    const la2=a*E.out(seg(t,tin+.15,tin+.6)),al=i<2?'left':'right',lx=i<2?x+26:x-30;
+    txt(p[2],lx,y+(i<2?44:-6),30,700,INK,al,la2);txt(p[3],lx,y+(i<2?80:30),30,700,OR,al,la2,0);
+  });
+}
+/* ---------- 4. 들쭉날쭉 ---------- */
+const ROWS=[['국제수학올림피아드',100,'금메달 수준',OR],['컴퓨터 조작 (OSWorld)',66.3,'66.3%',BLUE],['아날로그 시계 읽기',50.1,'50.1%',VIO],['천체물리 논문 재현',19,'20% 미만',RED]];
+function g4(t){
+  const a=card(t,S.s4,S.s5-.4,'최상위 AI의 과목별 성적표','자료: Stanford AI Index 2026 (검색 요약 기준)');if(a<=0)return;const d=dy(t,S.s4,50);
+  ROWS.forEach((r,i)=>{
+    const tin=42+i*1.15,y=CY+170+i*172+d,ra=a*E.out(seg(t,tin,tin+.5)),p=E.io(seg(t,tin+.1,tin+1.3)),bw=CW-120;
+    txt(r[0],CX+60,y,38,700,INK,'left',ra);
+    ctx.globalAlpha=ra;ctx.fillStyle='rgba(255,255,255,.07)';rr(CX+60,y+26,bw,50,25);ctx.fill();
+    const g=ctx.createLinearGradient(CX+60,0,CX+60+bw,0);g.addColorStop(0,rgba(r[3],.55));g.addColorStop(1,r[3]);
+    ctx.fillStyle=g;rr(CX+60,y+26,Math.max(50,bw*r[1]/100*p),50,25);ctx.fill();ctx.globalAlpha=1;
+    txt(r[2],CX+CW-60,y,40,800,r[3],'right',ra*seg(t,tin+.6,tin+1.1),-.02);
+  });
+}
+/* ---------- 5. 마무리 ---------- */
+function fin(t){
+  const a0=E.out(seg(t,S.s5,S.s5+.6));if(a0<=0)return;
+  txt('AI 점수를 볼 때 세 가지',540,540+dy(t,S.s5),62,800,INK,'center',a0,-.035);
+  [['1','무엇을 재는 시험인가',BLUE,'코딩인지, 컴퓨터 조작인지, 작업 길이인지'],['2','사람 기준선은 어디인가',OR,'72%가 높은 점수인지는 기준선이 정한다'],['3','언제 측정한 점수인가',GR,'1년이면 순위가 통째로 바뀐다']].forEach((r,i)=>{
+    const tin=S.s5+.9+i*1.05,i2=E.out(seg(t,tin,tin+.6));if(i2<=0)return;const y=660+i*250+(1-i2)*40;
+    ctx.save();ctx.globalAlpha=i2;ctx.fillStyle='rgba(255,255,255,.06)';rr(80,y,920,200,44);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle=r[2];ctx.beginPath();ctx.arc(170,y+100,44,0,6.283);ctx.fill();ctx.restore();
+    txt(r[0],170,y+120,56,850,'#07080c','center',i2,0);
+    txt(r[1],250,y+92,52,800,INK,'left',i2,-.03);txt(r[3],250,y+146,31,550,SUB,'left',i2,-.01);
+  });
+  rich([['점수보다 ',56,750,INK],['시험지',56,800,OR],['를 먼저 보세요',56,750,INK]],540,1500+dy(t,S.s5+4.6),E.out(seg(t,S.s5+4.6,S.s5+5.2)));
+}
+window.renderFrame=t=>{
+  ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;bg(t);hook(t);
+  head(t,S.s1,S.s2-.5,'1 · 벤치마크란',BLUE,[['모든 AI가 ',68,750,INK],['똑같이 푸는',68,800,BLUE]],[['시험지입니다',68,750,INK]]);
+  head(t,S.s2,S.s3-.5,'2 · 점수의 속도',BLUE,[['점수는 ',68,750,INK],['무섭게 빨리',68,800,BLUE]],[['오릅니다',68,750,INK]]);
+  head(t,S.s3,S.s4-.5,'3 · 다른 잣대',VIO,[['정답률 대신 ',68,750,INK],['일의 길이',68,800,VIO],['로',68,750,INK]],[['재기도 합니다',68,750,INK]]);
+  head(t,S.s4,S.s5-.4,'4 · 주의할 점',OR,[['높은 점수가 ',68,750,INK],['전부',68,800,OR],['를',68,750,INK]],[['말해 주지는 않습니다',68,750,INK]]);
+  g1(t);g2(t);g3(t);g4(t);
+  caption(t,5.4,9.6,[['같은 문제를 주고 ',46,700,INK],['채점',46,800,GR],['합니다',46,700,INK]]);
+  caption(t,10,S.s2-.5,[['100문제 중 66개 정답 = ',46,700,INK],['66점',46,800,GR]],'같은 시험이라 AI끼리 비교할 수 있습니다');
+  caption(t,15,19.4,[['2024년 약 12% → 2025년 ',46,700,INK],['66.3%',46,800,BLUE]]);
+  caption(t,19.8,S.s3-.5,[['사람 기준선',46,800,OR],[' 바로 아래까지 왔습니다',46,700,INK]],'금방 만점에 가까워져 변별력을 잃는 것이 ‘포화’입니다');
+  caption(t,27.8,32.3,[['2019년엔 ',46,700,INK],['몇 초',46,800,OR],['짜리 일만 해냈지만',46,700,INK]],'사람이 걸리는 시간 기준, 성공률 50%');
+  caption(t,32.7,S.s4-.5,[['2026년엔 ',46,700,INK],['반나절',46,800,OR],['짜리 일까지',46,700,INK]],'최근 두 점은 추세선보다 위 — 더 빨라지는 중');
+  caption(t,42,S.s5-.4,[['잘하는 과목과 못하는 과목이 ',44,700,INK],['들쭉날쭉',44,800,OR]],'점수 하나로 ‘다 잘한다’고 볼 수 없습니다');
+  fin(t);
+};
+window.ready=(async()=>{await Promise.all([500,550,600,650,700,750,800,850].map(w=>document.fonts.load(w+' 40px Pretendard','가A1%')));await document.fonts.ready;renderFrame(0);return true;})();
+</script>
+</body>
+</html>
