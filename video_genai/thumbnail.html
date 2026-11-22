@@ -1,0 +1,106 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>썸네일</title>
+<style>@font-face{font-family:"Pretendard";font-weight:45 920;src:url("node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2") format("woff2-variations");}
+*{margin:0;padding:0}html,body{background:#000}canvas{display:block}</style></head>
+<body><canvas id="c" width="1080" height="1920"></canvas>
+<script>
+const lang=new URLSearchParams(location.search).get('lang')||'ko';
+const cv=document.getElementById('c'),ctx=cv.getContext('2d'),W=1080,H=1920;
+const GOLD='#ffc83d',INK='#ffffff';
+function drawFace(g){
+  const S=512;let gr=g.createRadialGradient(256,190,40,256,256,380);gr.addColorStop(0,'#6b8fbf');gr.addColorStop(1,'#16223a');g.fillStyle=gr;g.fillRect(0,0,S,S);
+  // 어깨
+  gr=g.createLinearGradient(0,400,0,512);gr.addColorStop(0,'#4f6fa8');gr.addColorStop(1,'#243a66');g.fillStyle=gr;
+  g.beginPath();g.moveTo(30,512);g.bezierCurveTo(50,430,150,405,200,398);g.lineTo(312,398);g.bezierCurveTo(362,405,462,430,482,512);g.closePath();g.fill();
+  // 목
+  gr=g.createLinearGradient(0,330,0,420);gr.addColorStop(0,'#b97d5c');gr.addColorStop(1,'#d79b78');g.fillStyle=gr;
+  g.beginPath();g.moveTo(212,320);g.lineTo(300,320);g.lineTo(306,410);g.quadraticCurveTo(256,432,206,410);g.closePath();g.fill();
+  // 뒷머리
+  g.fillStyle='#2a1c16';g.beginPath();g.ellipse(256,226,150,170,0,0,6.283);g.fill();
+  g.beginPath();g.moveTo(112,240);g.quadraticCurveTo(100,330,135,372);g.lineTo(170,300);g.closePath();g.fill();
+  g.beginPath();g.moveTo(400,240);g.quadraticCurveTo(412,330,377,372);g.lineTo(342,300);g.closePath();g.fill();
+  // 귀
+  g.fillStyle='#e0a984';g.beginPath();g.ellipse(146,252,16,28,-.1,0,6.283);g.fill();g.beginPath();g.ellipse(366,252,16,28,.1,0,6.283);g.fill();
+  // 얼굴
+  gr=g.createRadialGradient(236,215,20,256,250,170);gr.addColorStop(0,'#f8d2b2');gr.addColorStop(.7,'#e9b38f');gr.addColorStop(1,'#c98d6a');g.fillStyle=gr;
+  g.beginPath();g.moveTo(256,96);g.bezierCurveTo(338,96,372,170,370,240);g.bezierCurveTo(368,312,318,368,256,372);g.bezierCurveTo(194,368,144,312,142,240);g.bezierCurveTo(140,170,174,96,256,96);g.fill();
+  // 볼
+  for(const x of [196,316]){gr=g.createRadialGradient(x,282,4,x,282,40);gr.addColorStop(0,'rgba(235,120,110,.35)');gr.addColorStop(1,'rgba(235,120,110,0)');g.fillStyle=gr;g.fillRect(x-40,242,80,80);}
+  // 앞머리
+  g.fillStyle='#2f2019';g.beginPath();g.moveTo(140,236);g.bezierCurveTo(128,120,214,78,280,86);g.bezierCurveTo(352,94,392,152,374,238);
+  g.bezierCurveTo(360,186,330,150,286,140);g.bezierCurveTo(250,166,196,170,166,180);g.bezierCurveTo(152,196,146,214,140,236);g.fill();
+  g.strokeStyle='rgba(120,80,60,.45)';g.lineWidth=3;g.beginPath();g.moveTo(286,92);g.quadraticCurveTo(250,120,236,160);g.stroke();
+  // 눈썹
+  g.strokeStyle='#3a271d';g.lineWidth=7;g.lineCap='round';
+  g.beginPath();g.moveTo(182,206);g.quadraticCurveTo(206,194,232,202);g.stroke();g.beginPath();g.moveTo(280,202);g.quadraticCurveTo(306,194,330,206);g.stroke();
+  // 눈
+  for(const x of [208,304]){
+    g.fillStyle='#fbf7f2';g.beginPath();g.moveTo(x-26,236);g.quadraticCurveTo(x,218,x+26,236);g.quadraticCurveTo(x,250,x-26,236);g.fill();
+    g.fillStyle='#5a3a26';g.beginPath();g.arc(x,236,11,0,6.283);g.fill();g.fillStyle='#160d08';g.beginPath();g.arc(x,236,5.5,0,6.283);g.fill();
+    g.fillStyle='#fff';g.beginPath();g.arc(x+4,232,3,0,6.283);g.fill();
+    g.strokeStyle='#2a1a12';g.lineWidth=3.5;g.beginPath();g.moveTo(x-27,236);g.quadraticCurveTo(x,216,x+27,235);g.stroke();
+  }
+  // 코
+  g.strokeStyle='rgba(150,90,65,.7)';g.lineWidth=3.5;g.beginPath();g.moveTo(262,246);g.quadraticCurveTo(268,282,262,294);g.stroke();
+  g.fillStyle='rgba(140,80,60,.45)';g.beginPath();g.ellipse(246,298,6,3.5,0,0,6.283);g.fill();g.beginPath();g.ellipse(268,298,6,3.5,0,0,6.283);g.fill();
+  // 입
+  g.fillStyle='#c4615a';g.beginPath();g.moveTo(222,328);g.quadraticCurveTo(240,318,256,324);g.quadraticCurveTo(272,318,290,328);g.quadraticCurveTo(256,334,222,328);g.fill();
+  g.fillStyle='#d97a70';g.beginPath();g.moveTo(224,329);g.quadraticCurveTo(256,352,288,329);g.quadraticCurveTo(256,336,224,329);g.fill();
+  // 조명
+  gr=g.createLinearGradient(140,0,372,0);gr.addColorStop(0,'rgba(255,240,220,.10)');gr.addColorStop(.6,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(40,20,30,.18)');g.fillStyle=gr;g.fillRect(0,0,S,S);
+}
+
+const FACE=document.createElement('canvas');FACE.width=FACE.height=512;drawFace(FACE.getContext('2d'));
+function pix(n){const c=document.createElement('canvas');c.width=c.height=n;const g=c.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(FACE,0,0,n,n);return c;}
+function noise(n){const c=document.createElement('canvas');c.width=c.height=n;const g=c.getContext('2d'),im=g.createImageData(n,n);let s=77;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+  for(let i=0;i<im.data.length;i+=4){const v=r()*255;im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255;}g.putImageData(im,0,0);return c;}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);}
+function meas(s,size,weight,ls){ctx.font=`${weight} ${size}px Pretendard`;ctx.letterSpacing=(ls*size)+'px';return ctx.measureText(s).width;}
+// 굵은 외곽선이 있는 글자 (작은 화면에서도 읽히게)
+function bold(parts,cx,y,maxW=980){
+  let tw=parts.reduce((a,p)=>a+meas(p[0],p[1],p[2],-.03),0),f=tw>maxW?maxW/tw:1;parts=parts.map(p=>[p[0],p[1]*f,p[2],p[3]]);tw*=f;
+  let x=cx-tw/2;
+  for(const [s,sz,wt,col] of parts){ctx.font=`${wt} ${sz}px Pretendard`;ctx.letterSpacing=(-.03*sz)+'px';ctx.textAlign='left';
+    ctx.lineJoin='round';ctx.strokeStyle='rgba(0,0,0,.92)';ctx.lineWidth=sz*.16;ctx.strokeText(s,x,y);
+    if(Array.isArray(col)){const g=ctx.createLinearGradient(x,y-sz,x,y);g.addColorStop(0,col[0]);g.addColorStop(1,col[1]);ctx.fillStyle=g;}else ctx.fillStyle=col;
+    ctx.fillText(s,x,y);x+=ctx.measureText(s).width;}
+}
+function chip(s,x,y,bg,fg,size=56){ctx.font=`850 ${size}px Pretendard`;ctx.letterSpacing='0px';const w=ctx.measureText(s).width+size*.9,h=size*1.45;
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.6)';ctx.shadowBlur=24;ctx.fillStyle=bg;rr(x,y,w,h,h/2);ctx.fill();ctx.restore();
+  ctx.fillStyle=fg;ctx.textAlign='left';ctx.fillText(s,x+size*.45,y+h*.72);return w;}
+(async()=>{
+  await Promise.all([700,800,850,900].map(w=>document.fonts.load(w+' 60px Pretendard','가A1')));await document.fonts.ready;
+  // 배경
+  ctx.fillStyle='#05070d';ctx.fillRect(0,0,W,H);
+  const blob=(x,y,r,c,a)=>{const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,`rgba(${c},${a})`);g.addColorStop(.65,`rgba(${c},0)`);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);};
+  blob(200,300,900,'70,120,255',.32);blob(900,1650,900,'255,170,60',.26);blob(540,950,700,'191,140,255',.16);
+  // 얼굴: 대각선으로 2014 / 2018
+  const X=110,Y=470,S=860,R=56;
+  ctx.save();ctx.shadowColor='rgba(255,200,61,.55)';ctx.shadowBlur=70;ctx.fillStyle='#000';rr(X,Y,S,S,R);ctx.fill();ctx.restore();
+  ctx.save();rr(X,Y,S,S,R);ctx.clip();
+  ctx.drawImage(FACE,X,Y,S,S);                                                   // 선명한 쪽
+  ctx.save();ctx.beginPath();ctx.moveTo(X,Y);ctx.lineTo(X+S,Y);ctx.lineTo(X,Y+S);ctx.closePath();ctx.clip();   // 왼쪽 위 = 2014
+  ctx.filter='grayscale(1) contrast(.85) blur(2.6px)';ctx.imageSmoothingEnabled=false;ctx.drawImage(pix(20),X,Y,S,S);ctx.filter='none';
+  ctx.globalAlpha=.16;ctx.drawImage(noise(64),X,Y,S,S);ctx.globalAlpha=1;ctx.imageSmoothingEnabled=true;ctx.restore();
+  // 경계선
+  ctx.save();ctx.shadowColor=GOLD;ctx.shadowBlur=40;ctx.strokeStyle='#fff6d0';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(X+S+20,Y-20);ctx.lineTo(X-20,Y+S+20);ctx.stroke();ctx.restore();
+  ctx.restore();
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=4;rr(X,Y,S,S,R);ctx.stroke();ctx.restore();
+  // 연도 표시
+  chip('2014',X+34,Y+34,'rgba(20,22,30,.92)','#d8dce6',64);
+  const w2=meas('2018',64,850,0)+64*.9;chip('2018',X+S-34-w2,Y+S-34-64*1.45,GOLD,'#1a1200',64);
+  // 글자
+  if(lang==='ko'){
+    bold([['AI가 그린 ',112,900,INK],["'얼굴'",118,900,[ '#fff3c4',GOLD]]],540,330);
+    bold([['4년 만에 ',120,900,INK],['이렇게?!',132,900,['#fff3c4',GOLD]]],540,1530);
+    bold([['생성형 AI 10년, 60초 정리',58,800,'#cfd6e4']],540,1640);
+    ctx.font='600 30px Pretendard';ctx.fillStyle='rgba(255,255,255,.55)';ctx.textAlign='right';ctx.fillText('재현 그림',X+S-14,Y+S+44);
+  }else{
+    bold([['AI drew a ',112,900,INK],['face',118,900,['#fff3c4',GOLD]]],540,330);
+    bold([['10 years of ',112,900,INK],['AI',124,900,['#fff3c4',GOLD]]],540,1530);
+    bold([['explained in 60 seconds',58,800,'#cfd6e4']],540,1640);
+    ctx.font='600 30px Pretendard';ctx.fillStyle='rgba(255,255,255,.55)';ctx.textAlign='right';ctx.fillText('Illustration',X+S-14,Y+S+44);
+  }
+  window.done=true;
+})();
+</script></body></html>
